@@ -1,0 +1,65 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and progress data",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "school": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "lastActive": { "type": "string", "format": "date-time" },
+        "xp": { "type": "integer" },
+        "level": { "type": "integer" },
+        "points": { "type": "integer" },
+        "progress": { "type": "object" },
+        "streak": { "type": "integer" },
+        "achievements": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["name", "createdAt", "lastActive", "xp", "level"]
+    },
+    "Lesson": {
+      "title": "Lesson",
+      "description": "AI-generated educational lesson content",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "topicId": { "type": "string" },
+        "topicName": { "type": "string" },
+        "introduction": { "type": "string" },
+        "detailedExplanation": { "type": "string" },
+        "miniSummary": { "type": "string" },
+        "quiz": { "type": "array" }
+      },
+      "required": ["title", "detailedExplanation", "quiz"]
+    },
+    "Discussion": {
+      "title": "Discussion",
+      "description": "Community messages",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "text": { "type": "string" },
+        "likes": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "text", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents"
+    },
+    "/lessons/{lessonId}": {
+      "schema": "Lesson",
+      "description": "Lesson content documents"
+    },
+    "/discussions/{msgId}": {
+      "schema": "Discussion",
+      "description": "Community discussion messages"
+    }
+  }
+}

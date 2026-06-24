@@ -1,0 +1,7 @@
+{
+  "name": "KrtLab",
+  "description": "Build Your Mind. Upgrade Your Future. «Կառուցիր միտքդ, զարգացրու ապագադ»",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

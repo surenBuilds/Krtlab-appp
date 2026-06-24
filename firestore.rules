@@ -1,0 +1,95 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId} (Firebase Auth UID)
+    // Fields:
+    //   - name: string (required)
+    //   - email: string (optional)
+    //   - createdAt: string (ISO 8601)
+    //   - lastActive: string (ISO 8601)
+    //   - xp: number
+    //   - level: number
+    //   - streak: number
+    //   - achievements: list of strings
+    //   - progress: map
+    //   - flashcards: list of maps
+    //
+    // Collection: lessons
+    // Document ID: {lessonId} (format: subfieldId_levelId)
+    // Fields:
+    //   - title: string
+    //   - learningObjectives: string
+    //   - keyConcept: string
+    //   - content: string
+    //   - examples: string
+    //   - practicalTask: string
+    //   - criticalThinking: string
+    //   - quiz: list of maps
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    // Domain Validators
+    function isValidUser(data) {
+      return data.name is string && data.name.size() < 100 &&
+             (!('email' in data) || isValidEmail(data.email)) &&
+             isValidDateString(data.createdAt) &&
+             data.xp is number && data.xp >= 0 &&
+             data.level is number && data.level >= 1;
+    }
+
+    function isValidLesson(data) {
+      return data.title is string && data.title.size() > 0 && data.title.size() < 500 &&
+             data.detailedExplanation is string && data.detailedExplanation.size() < 500000 &&
+             data.quiz is list && data.quiz.size() > 0;
+    }
+
+    // User profiles
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data);
+    }
+
+    // Lessons collection
+    match /lessons/{lessonId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidLesson(request.resource.data);
+      allow update: if isAuthenticated() && isValidLesson(request.resource.data);
+    }
+
+    // Discussions collection
+    match /discussions/{msgId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && 
+                    request.resource.data.userId == request.auth.uid &&
+                    request.resource.data.text is string &&
+                    request.resource.data.text.size() < 500;
+      allow update: if isAuthenticated() && 
+                    (resource.data.userId == request.auth.uid || 
+                     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']));
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+  }
+}
