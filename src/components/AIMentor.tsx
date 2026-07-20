@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, MessageSquare, X, Send, Loader2, Activity, ShieldCheck, Zap } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
+import { Sparkles, X, Send, Loader2, Activity, ShieldCheck, Zap } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { isQuotaError } from '../services/geminiService';
+import { chatWithMentor, isQuotaError } from '../services/geminiService';
 
 interface AIMentorProps {
   userName: string;
@@ -21,29 +20,21 @@ export const AIMentor: React.FC<AIMentorProps> = ({ userName, isOpen, onClose })
   const handleSystemCheck = async () => {
     if (loading) return;
     setLoading(true);
-    setMessages(prev => [...prev, { role: 'user', text: "Կատարիր համակարգի բովանդակային ախտորոշում (Content Diagnostic):" }]);
+    
+    const diagnosticMsg = "Կատարիր համակարգի բովանդակային ախտորոշում (Content Diagnostic):";
+    setMessages(prev => [...prev, { role: 'user', text: diagnosticMsg }]);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const model = "gemini-3-flash-preview";
-      
-      const response = await ai.models.generateContent({
-        model,
-        contents: `
-        You are the KertLab Internal AI (QA + Optimization Agent). 
-        Perform a simulated "System Content Audit".
-        
-        Rules:
-        - Detect potential inconsistencies (Content level).
-        - Suggest improvements for lesson clarity.
-        - Ensure high-quality UX.
-        - Report in Armenian.
-        - Tone: Professional System Output.
-        `,
-      });
+      const history = messages.map(m => ({
+        role: m.role === 'ai' ? 'ai' : 'user',
+        text: m.text
+      }));
+      history.push({ role: 'user', text: diagnosticMsg });
 
-      setMessages(prev => [...prev, { role: 'ai', text: response.text || "Ախտորոշումը հաջողությամբ ավարտվեց: Համակարգը օպտիմալ վիճակում է:" }]);
+      const responseText = await chatWithMentor(history, userName);
+      setMessages(prev => [...prev, { role: 'ai', text: responseText || "Ախտորոշումը հաջողությամբ ավարտվեց: Համակարգը օպտիմալ վիճակում է:" }]);
     } catch (err) {
+      console.error("System Check error:", err);
       setMessages(prev => [...prev, { role: 'ai', text: "Չհաջողվեց կատարել ախտորոշում:" }]);
     } finally {
       setLoading(false);
@@ -63,17 +54,14 @@ export const AIMentor: React.FC<AIMentorProps> = ({ userName, isOpen, onClose })
 
     while (retryCount <= maxRetries) {
       try {
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        const model = "gemini-3-flash-preview";
-        
-        const response = await ai.models.generateContent({
-          model,
-          contents: `Որպես կրթական մենթոր KrtLab հարթակում, պատասխանիր օգտատիրոջը (${userName}): 
-          Օգտատիրոջ հարցը: ${userMsg}
-          Պատասխանիր հայերեն, եղիր քաջալերող և տուր հստակ բացատրություն:`,
-        });
+        const history = [...messages, { role: 'user' as const, text: userMsg }].map(m => ({
+          role: m.role === 'ai' ? 'ai' : 'user',
+          text: m.text
+        }));
 
-        setMessages(prev => [...prev, { role: 'ai', text: response.text || "Ներողություն, չհաջողվեց պատասխանել:" }]);
+        const responseText = await chatWithMentor(history, userName);
+
+        setMessages(prev => [...prev, { role: 'ai', text: responseText || "Ներողություն, չհաջողվեց պատասխանել:" }]);
         setLoading(false);
         break;
       } catch (err: any) {

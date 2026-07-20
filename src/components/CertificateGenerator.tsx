@@ -4,11 +4,10 @@ import { Award, Download, ShieldCheck, QrCode, ExternalLink, Loader2 } from 'luc
 import { QRCodeSVG } from 'qrcode.react';
 import jspdf from 'jspdf';
 import html2canvas from 'html2canvas';
-import { GoogleGenAI } from "@google/genai";
+import { isQuotaError, generateCertificateOutcomes } from '../services/geminiService';
 import { UserProfile } from '../types';
 import { Logo } from './Logo';
 import { toast } from 'sonner';
-import { isQuotaError } from '../services/geminiService';
 
 interface CertificateProps {
   profile: UserProfile;
@@ -41,12 +40,8 @@ export const CertificateGenerator: React.FC<CertificateProps> = ({
 
       while (retryCount <= maxRetries) {
         try {
-          const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
-          const response = await ai.models.generateContent({
-            model: "gemini-3-flash-preview",
-            contents: `Generate a professional 2-sentence summary of learning outcomes for a student who completed the course "${courseName}" at level "${levelName}" on the KrtLab educational platform. Focus on skills, knowledge, and competencies achieved. Be concise and professional.`,
-          });
-          setLearningOutcomes(response.text || 'Successfully demonstrated comprehensive knowledge and practical application of core principles within the subject area.');
+          const outcomesText = await generateCertificateOutcomes(courseName, levelName);
+          setLearningOutcomes(outcomesText || 'Successfully demonstrated comprehensive knowledge and practical application of core principles within the subject area.');
           setIsAiLoading(false);
           break;
         } catch (error: any) {

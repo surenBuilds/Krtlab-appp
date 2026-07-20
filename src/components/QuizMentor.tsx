@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, MessageSquare, ArrowRight, Loader2, RefreshCcw } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
+import { Sparkles, ArrowRight, Loader2, RefreshCcw } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { isQuotaError } from '../services/geminiService';
+import { explainQuizMistake, isQuotaError } from '../services/geminiService';
 
 interface QuizMentorProps {
   question: string;
@@ -31,28 +30,8 @@ export const QuizMentor: React.FC<QuizMentorProps> = ({
 
     while (retryCount <= maxRetries) {
       try {
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        const model = "gemini-3-flash-preview";
-        
-        const prompt = `
-          Որպես KrtLab-ի կրթական մենթոր, բացատրիր, թե ինչու է օգտատիրոջ պատասխանը սխալ և ինչու է ճիշտ պատասխանը ճիշտ:
-          
-          Հարց: ${question}
-          Օգտատիրոջ պատասխան: ${userAnswer}
-          Ճիշտ պատասխան: ${correctAnswer}
-          ${context ? `Կոնտեքստ: ${context}` : ''}
-          
-          Պատասխանիր հայերեն, եղիր քաջալերող և տուր հստակ բացատրություն: 
-          Նաև առաջարկիր հաջորդ քայլը սովորելու համար:
-          Պատասխանը ձևաչափիր որպես մաքուր տեքստ (առանց մարկդաունի):
-        `;
-
-        const response = await ai.models.generateContent({
-          model,
-          contents: prompt,
-        });
-
-        setExplanation(response.text || "Ներողություն, չհաջողվեց բացատրություն գտնել:");
+        const text = await explainQuizMistake(question, userAnswer, correctAnswer, context);
+        setExplanation(text);
         setLoading(false);
         break;
       } catch (err: any) {
@@ -74,11 +53,11 @@ export const QuizMentor: React.FC<QuizMentorProps> = ({
   };
 
   return (
-    <div className="mt-6">
+    <div className="mt-6 text-slate-800">
       {!explanation && !loading && !error && (
         <button
           onClick={getExplanation}
-          className="flex items-center gap-3 text-accent font-black text-sm hover:scale-105 transition-all bg-accent/5 px-6 py-3 rounded-2xl border-2 border-accent/10 shadow-sm uppercase tracking-widest"
+          className="flex items-center gap-3 text-accent font-black text-xs hover:scale-105 transition-all bg-accent/5 px-6 py-3 rounded-2xl border-2 border-accent/10 shadow-sm uppercase tracking-widest"
         >
           <Sparkles size={18} className="fill-accent" />
           Հարցնել KrtLab ԱԲ Մենթորին

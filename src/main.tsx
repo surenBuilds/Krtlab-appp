@@ -4,13 +4,16 @@ import App from './App.tsx';
 import './index.css';
 import { LessonProvider } from './hooks/LessonContext';
 import { UserProvider } from './hooks/useUserProfile';
+import { TranslationProvider } from './hooks/useTranslation';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <UserProvider>
-      <LessonProvider>
-        <App />
-      </LessonProvider>
+      <TranslationProvider>
+        <LessonProvider>
+          <App />
+        </LessonProvider>
+      </TranslationProvider>
     </UserProvider>
   </StrictMode>,
 );

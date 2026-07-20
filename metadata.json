@@ -3,5 +3,8 @@
   "description": "Build Your Mind. Upgrade Your Future. «Կառուցիր միտքդ, զարգացրու ապագադ»",
   "requestFramePermissions": [
     "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]
 }

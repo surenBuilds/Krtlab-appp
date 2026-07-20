@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useUserProfile } from './hooks/useUserProfile';
+import { useTranslation } from './hooks/useTranslation';
 import { CATEGORIES } from './data/categories';
 import { Dashboard } from './components/Dashboard';
 import { LearningModule } from './components/LearningModule';
@@ -21,6 +22,17 @@ import { LEARNING_PATHS, LearningPath } from './data/learningPaths';
 import { Flashcard } from './types';
 import { SimulationGame } from './components/games/SimulationGame';
 import { GameCreator } from './components/GameCreator';
+
+// Global AI Education Ecosystem Modules
+import { MentorMarketplace } from './components/MentorMarketplace';
+import { CourseMarketplace } from './components/CourseMarketplace';
+import { SkillGraph } from './components/SkillGraph';
+import { PersonalLearningProfile } from './components/PersonalLearningProfile';
+import { CareerCenter } from './components/CareerCenter';
+import { OrganizationDashboard } from './components/OrganizationDashboard';
+import { DeveloperPlatform } from './components/DeveloperPlatform';
+import { MonetizationSystem } from './components/MonetizationSystem';
+
 import { 
   BookOpen, LayoutDashboard, MessageSquare, BrainCircuit, 
   Menu, X, ChevronRight, ChevronLeft, CheckCircle2, Award, Zap,
@@ -59,7 +71,8 @@ export default function App() {
     user 
   } = useUserProfile();
   const { preGenerate } = useLessons();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'learn' | 'flashcards' | 'paths' | 'games' | 'goals' | 'creator' | 'lab' | 'school' | 'module'>('dashboard');
+  const { t, language, setLanguage } = useTranslation();
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'learn' | 'flashcards' | 'paths' | 'games' | 'goals' | 'creator' | 'lab' | 'school' | 'module' | 'mentor-marketplace' | 'course-marketplace' | 'skill-graph' | 'portfolio' | 'career-center' | 'org-dashboard' | 'dev-platform' | 'monetization'>('dashboard');
   const [labTopic, setLabTopic] = useState<{ field: string, topic: string } | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
@@ -304,62 +317,131 @@ export default function App() {
           <Logo size="md" />
         </div>
 
-        <nav className="flex-1 px-4 space-y-2">
+        <nav className="flex-1 overflow-y-auto max-h-[calc(100vh-240px)] scrollbar-none px-4 space-y-1.5 pb-6">
+          <div className="px-3 py-1 text-[9px] font-black tracking-widest text-slate-400 uppercase">
+            {t('nav.core')}
+          </div>
           <NavItem 
             active={activeTab === 'dashboard'} 
             onClick={() => { setActiveTab('dashboard'); setSelectedCategory(null); }}
-            icon={<LayoutDashboard size={20} />}
-            label="Գլխավոր"
+            icon={<LayoutDashboard size={16} />}
+            label={t('nav.dashboard')}
           />
           <NavItem 
             active={activeTab === 'learn'} 
             onClick={() => setActiveTab('learn')}
-            icon={<BookOpen size={20} />}
-            label="Դասընթացներ"
+            icon={<BookOpen size={16} />}
+            label={t('nav.learn')}
           />
           <NavItem 
             active={activeTab === 'paths'} 
             onClick={() => { setActiveTab('paths'); setSelectedPath(null); }}
-            icon={<Map size={20} />}
-            label="Ուղիներ"
+            icon={<Map size={16} />}
+            label={t('nav.paths')}
           />
           <NavItem 
             active={activeTab === 'lab'} 
             onClick={() => setActiveTab('lab')}
-            icon={<FlaskConical size={20} />}
-            label="Լաբորատորիա"
+            icon={<FlaskConical size={16} />}
+            label={t('nav.lab')}
           />
           <NavItem 
             active={activeTab === 'flashcards'} 
             onClick={() => setActiveTab('flashcards')}
-            icon={<BrainCircuit size={20} />}
-            label="Քարտեր"
+            icon={<BrainCircuit size={16} />}
+            label={t('nav.flashcards')}
           />
           <NavItem 
             active={activeTab === 'goals'} 
             onClick={() => setActiveTab('goals')}
-            icon={<Target size={20} />}
-            label="Նպատակներ"
+            icon={<Target size={16} />}
+            label={t('nav.goals')}
           />
           <NavItem 
             active={activeTab === 'module'} 
             onClick={() => setActiveTab('module')}
-            icon={<BookOpen size={20} />}
-            label="Open Module"
+            icon={<BookOpen size={16} />}
+            label={t('nav.openModule')}
           />
+
+          <div className="px-3 py-1 pt-3 text-[9px] font-black tracking-widest text-slate-400 uppercase">
+            {t('nav.marketplaces')}
+          </div>
+          <NavItem 
+            active={activeTab === 'mentor-marketplace'} 
+            onClick={() => setActiveTab('mentor-marketplace')}
+            icon={<MessageSquare size={16} />}
+            label={t('nav.mentorMarketplace')}
+          />
+          <NavItem 
+            active={activeTab === 'course-marketplace'} 
+            onClick={() => setActiveTab('course-marketplace')}
+            icon={<BookOpen size={16} />}
+            label={t('nav.courseMarketplace')}
+          />
+
+          <div className="px-3 py-1 pt-3 text-[9px] font-black tracking-widest text-slate-400 uppercase">
+            {t('nav.professional')}
+          </div>
+          <NavItem 
+            active={activeTab === 'skill-graph'} 
+            onClick={() => setActiveTab('skill-graph')}
+            icon={<BrainCircuit size={16} />}
+            label={t('nav.skillGraph')}
+          />
+          <NavItem 
+            active={activeTab === 'portfolio'} 
+            onClick={() => setActiveTab('portfolio')}
+            icon={<Award size={16} />}
+            label={t('nav.portfolio')}
+          />
+          <NavItem 
+            active={activeTab === 'career-center'} 
+            onClick={() => setActiveTab('career-center')}
+            icon={<Briefcase size={16} />}
+            label={t('nav.careerCenter')}
+          />
+
+          <div className="px-3 py-1 pt-3 text-[9px] font-black tracking-widest text-slate-400 uppercase">
+            {t('nav.institutions')}
+          </div>
+          <NavItem 
+            active={activeTab === 'org-dashboard'} 
+            onClick={() => setActiveTab('org-dashboard')}
+            icon={<Building2 size={16} />}
+            label={t('nav.orgDashboard')}
+          />
+          <NavItem 
+            active={activeTab === 'dev-platform'} 
+            onClick={() => setActiveTab('dev-platform')}
+            icon={<Cpu size={16} />}
+            label={t('nav.devPlatform')}
+          />
+          <NavItem 
+            active={activeTab === 'monetization'} 
+            onClick={() => setActiveTab('monetization')}
+            icon={<Wallet size={16} />}
+            label={t('nav.monetization')}
+          />
+
           {(isAdmin || isTeacher) && (
-            <NavItem 
-              active={activeTab === 'school'} 
-              onClick={() => setActiveTab('school')}
-              icon={<Building2 size={20} />}
-              label="Դպրոցի Կառավարում"
-            />
+            <>
+              <div className="px-3 py-1 pt-3 text-[9px] font-black tracking-widest text-slate-400 uppercase">
+                {t('nav.admin')}
+              </div>
+              <NavItem 
+                active={activeTab === 'school'} 
+                onClick={() => setActiveTab('school')}
+                icon={<Building2 size={16} />}
+                label={t('nav.schoolManagement')}
+              />
+            </>
           )}
           {isAdmin && (
             <NavItem 
               active={activeTab === 'creator'} 
               onClick={() => setActiveTab('creator')}
-              icon={<Wand2 size={20} />}
+              icon={<Wand2 size={16} />}
               label="Game Creator"
             />
           )}
@@ -442,6 +524,28 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Elegant Language Switcher */}
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+              <button
+                onClick={() => setLanguage('hy')}
+                className={cn(
+                  "px-3 py-1 rounded-lg text-[10px] font-black uppercase transition-all cursor-pointer",
+                  language === 'hy' ? "bg-slate-900 text-white shadow-sm font-black" : "text-slate-500 hover:text-slate-800"
+                )}
+              >
+                AM
+              </button>
+              <button
+                onClick={() => setLanguage('en')}
+                className={cn(
+                  "px-3 py-1 rounded-lg text-[10px] font-black uppercase transition-all cursor-pointer",
+                  language === 'en' ? "bg-slate-900 text-white shadow-sm font-black" : "text-slate-500 hover:text-slate-800"
+                )}
+              >
+                EN
+              </button>
+            </div>
+
             <button
               onClick={startVoiceCommand}
               className={cn(
@@ -453,7 +557,7 @@ export default function App() {
               title="Ձայնային հրահանգ"
             >
               <Mic size={20} />
-              {isVoiceActive && <span className="text-xs font-bold hidden sm:inline">Լսում եմ...</span>}
+              {isVoiceActive && <span className="text-xs font-bold hidden sm:inline">{t('common.listening')}</span>}
             </button>
             <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-accent/10 text-accent rounded-full border border-accent/20">
               <Award size={18} />
@@ -466,7 +570,7 @@ export default function App() {
                 : (profile?.streak || 0) > 0 ? "bg-secondary/10 text-secondary border-secondary/20" : "bg-slate-100 text-slate-400 border-slate-200"
             )}>
               <Zap size={18} className={cn(isStreakAtRisk && "fill-amber-600")} />
-              <span className="text-sm font-bold">Օր {profile?.streak || 0}</span>
+              <span className="text-sm font-bold">{t('dashboard.streakDay', { streak: profile?.streak || 0 })}</span>
             </div>
           </div>
 
@@ -490,8 +594,8 @@ export default function App() {
               >
                 <div className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                   <div>
-                    <h2 className="text-4xl font-black text-slate-900 tracking-tight">Բարի գալուստ, {profile?.name || 'Օգտատեր'}</h2>
-                    <p className="text-slate-500 font-medium mt-1">Ահա քո այսօրվա առաջընթացը:</p>
+                    <h2 className="text-4xl font-black text-slate-900 tracking-tight">{t('dashboard.welcome')}, {profile?.name || 'Օգտատեր'}</h2>
+                    <p className="text-slate-500 font-medium mt-1">{t('dashboard.welcomeSub')}</p>
                   </div>
                 </div>
 
@@ -963,6 +1067,94 @@ export default function App() {
             {activeTab === 'module' && (
               <ModulePage onBack={() => setActiveTab('dashboard')} />
             )}
+
+            {activeTab === 'mentor-marketplace' && (
+              <motion.div
+                key="mentor-marketplace"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <MentorMarketplace />
+              </motion.div>
+            )}
+
+            {activeTab === 'course-marketplace' && (
+              <motion.div
+                key="course-marketplace"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <CourseMarketplace />
+              </motion.div>
+            )}
+
+            {activeTab === 'skill-graph' && (
+              <motion.div
+                key="skill-graph"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <SkillGraph />
+              </motion.div>
+            )}
+
+            {activeTab === 'portfolio' && (
+              <motion.div
+                key="portfolio"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <PersonalLearningProfile />
+              </motion.div>
+            )}
+
+            {activeTab === 'career-center' && (
+              <motion.div
+                key="career-center"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <CareerCenter />
+              </motion.div>
+            )}
+
+            {activeTab === 'org-dashboard' && (
+              <motion.div
+                key="org-dashboard"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <OrganizationDashboard />
+              </motion.div>
+            )}
+
+            {activeTab === 'dev-platform' && (
+              <motion.div
+                key="dev-platform"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <DeveloperPlatform />
+              </motion.div>
+            )}
+
+            {activeTab === 'monetization' && (
+              <motion.div
+                key="monetization"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <MonetizationSystem />
+              </motion.div>
+            )}
           </AnimatePresence>
         </div>
       </main>
@@ -1108,19 +1300,13 @@ const NavItem = ({ active, onClick, icon, label }: { active: boolean, onClick: (
   <button
     onClick={onClick}
     className={cn(
-      "w-full flex items-center gap-3 px-6 py-5 rounded-[1.5rem] font-black transition-all relative group",
+      "w-full flex items-center gap-3 px-5 py-2.5 rounded-xl font-black transition-all relative group text-xs cursor-pointer",
       active 
-        ? "bg-primary/5 text-primary shadow-sm border border-primary/10" 
-        : "text-slate-400 hover:bg-slate-50 hover:text-slate-900"
+        ? "bg-slate-100 text-slate-900 border-l-4 border-slate-900" 
+        : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
     )}
   >
-    {active && (
-      <motion.div 
-        layoutId="nav-active"
-        className="absolute left-0 w-1.5 h-8 bg-gradient-brand rounded-r-full"
-      />
-    )}
-    <span className={cn("transition-transform duration-300", active ? "scale-110" : "group-hover:scale-110")}>
+    <span className={cn("transition-transform duration-300", active ? "scale-110 text-primary" : "group-hover:scale-110")}>
       {icon}
     </span>
     <span className="tracking-tight">{label}</span>
@@ -1131,8 +1317,8 @@ const MobileNavItem = ({ active, onClick, icon, label }: { active: boolean, onCl
   <button
     onClick={onClick}
     className={cn(
-      "w-full flex items-center gap-4 p-5 rounded-[1.5rem] font-black transition-all",
-      active ? "bg-gradient-brand text-white shadow-xl shadow-primary/20" : "text-slate-500 hover:bg-slate-50"
+      "w-full flex items-center gap-4 py-2.5 px-4 rounded-xl font-black transition-all text-xs cursor-pointer",
+      active ? "bg-slate-900 text-white shadow-md" : "text-slate-500 hover:bg-slate-50"
     )}
   >
     <span className={cn("transition-transform duration-300", active ? "scale-110" : "")}>
