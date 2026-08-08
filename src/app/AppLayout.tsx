@@ -7,7 +7,7 @@ import { useUserProfile } from "../hooks/useUserProfile";
 import { useTranslation } from "../hooks/useTranslation";
 import { toast } from "sonner";
 
-export const AppLayout: React.FC = () => {
+export const AppLayout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const { profile } = useUserProfile();
   const { language, setLanguage } = useTranslation();
   const isAdmin = profile?.role === "admin";
@@ -29,7 +29,7 @@ export const AppLayout: React.FC = () => {
               <button onClick={() => toast.info("Voice coming soon")} className="px-3 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition-all"><Mic size={16} /></button>
             </div>
           </header>
-          <div className="p-8 max-w-7xl mx-auto w-full"><Outlet /></div>
+          <div className="p-8 max-w-7xl mx-auto w-full">{children || <Outlet />}</div>
         </ErrorBoundary>
       </main>
     </div>
