@@ -5,6 +5,7 @@ import { OnboardingPage } from "../features/onboarding/OnboardingPage";
 import { GrowthDashboard } from "../features/dashboard/GrowthDashboard";
 import { GrowthAIMentor } from "../features/mentor/GrowthAIMentor";
 import { GrowthSkillGraph } from "../features/skills/GrowthSkillGraph";
+import { CareerPathEngine } from "../features/career/CareerPathEngine";
 import { useUserProfile } from "../hooks/useUserProfile";
 import { Toaster } from "sonner";
 import { toast } from "sonner";
@@ -50,7 +51,7 @@ const router = createBrowserRouter([{path:"/",element:<AppShell/>,children:[
   {path:"languages",element:<ProtectedRoute><AppLayout><LazyRoute><LangWrapper/></LazyRoute></AppLayout></ProtectedRoute>},
   {path:"skills",element:<ProtectedRoute><AppLayout><GrowthSkillGraph/></AppLayout></ProtectedRoute>},
   {path:"discipline",element:<ProtectedRoute><AppLayout><LazyRoute><DisciplineWrapper/></LazyRoute></AppLayout></ProtectedRoute>},
-  {path:"career",element:<ProtectedRoute><AppLayout><LazyRoute><CareerCenter/></LazyRoute></AppLayout></ProtectedRoute>},
+  {path:"career",element:<ProtectedRoute><AppLayout><CareerPathEngine/></AppLayout></ProtectedRoute>},
   {path:"portfolio",element:<ProtectedRoute><AppLayout><LazyRoute><PersonalLearningProfile/></LazyRoute></AppLayout></ProtectedRoute>},
   {path:"opportunities",element:<ProtectedRoute><AppLayout><LazyRoute><CareerCenter/></LazyRoute></AppLayout></ProtectedRoute>},
   {path:"courses",element:<ProtectedRoute><AppLayout><LazyRoute><CourseMarketplace/></LazyRoute></AppLayout></ProtectedRoute>},
