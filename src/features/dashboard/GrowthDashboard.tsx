@@ -68,7 +68,7 @@ export const GrowthDashboard: React.FC = () => {
       <div className="space-y-6">
         <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm"><h3 className="text-lg font-black text-slate-900 mb-4"><Rocket size={20} className="text-primary inline mr-2"/>Հաջորդը</h3>
           <div className="space-y-3">{recommendations.map((ac,i)=><motion.button key={i} whileHover={{x:4}} onClick={()=>{if(ac.type==="learning")navigate("/learn");else if(ac.type==="goal")navigate("/goals");else navigate("/lab");}} className={cn("w-full text-left p-4 rounded-2xl border transition-all flex items-start gap-3",ac.priority==="critical"?"bg-red-50 border-red-200":ac.priority==="high"?"bg-amber-50 border-amber-200":"bg-slate-50 border-slate-100 hover:bg-blue-50 hover:border-blue-200")}>{ac.priority==="critical"?<Flame size={18} className="text-red-500 mt-0.5"/>:ac.priority==="high"?<Zap size={18} className="text-amber-500 mt-0.5"/>:<ArrowRight size={18} className="text-slate-400 mt-0.5"/>}<div><p className="text-sm font-bold text-slate-900">{ac.title}</p></div></motion.button>)}</div></div>
-        <StreakCalendar /><AchievementsList />
+        <StreakCalendar streak={profile?.streak || 0} activityHistory={profile?.lastActive ? [profile.lastActive] : []} /><AchievementsList unlockedIds={profile?.achievements || []} />
       </div>
     </div>
   </div>);
