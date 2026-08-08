@@ -5,6 +5,8 @@ import { ACHIEVEMENTS } from '../data/achievements';
 import { toast } from 'sonner';
 import { auth, db } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import { onLessonCompleted, onHabitCompleted, onProjectCompleted } from '../services/growthEngine';
+import { calculateSkillPoints } from '../data/skillMappings';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { AdaptiveGameService } from '../services/adaptiveGameService';
 

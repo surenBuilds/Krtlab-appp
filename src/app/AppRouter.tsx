@@ -7,6 +7,7 @@ import { GrowthAIMentor } from "../features/mentor/GrowthAIMentor";
 import { GrowthSkillGraph } from "../features/skills/GrowthSkillGraph";
 import { useUserProfile } from "../hooks/useUserProfile";
 import { Toaster } from "sonner";
+import { toast } from "sonner";
 
 const GoalsSection = lazy(() => import("../components/GoalsSection").then(m=>({default:m.GoalsSection})));
 const LearningPaths = lazy(() => import("../components/LearningPaths").then(m=>({default:m.LearningPaths})));
@@ -32,7 +33,7 @@ function ProtectedRoute({children}:{children:React.ReactNode}){const{profile,loa
 
 function OnboardingRoute(){const{profile,user,loading,updateProfile}=useUserProfile();const hl=async()=>{try{const{logout}=await import("../lib/firebase");await logout()}catch{}};if(loading)return<LazyFallback/>;if(profile?.name)return<Navigate to="/dashboard" replace/>;return<OnboardingPage onComplete={d=>updateProfile(d)} user={user} onLogout={hl}/>}
 
-function FlashcardWrapper(){const{profile,updateProfile}=useUserProfile();const ha=(term:string,def:string,catId:string,lvl:string)=>{updateProfile({flashcards:[...(profile?.flashcards||[]),{id:Math.random().toString(36).substr(2,9),term,definition:def,categoryId:catId,subcategoryId:"general",createdAt:new Date().toISOString(),nextReview:new Date().toISOString(),interval:0,repetitionCount:0,easeFactor:2.5,level:lvl as any}]})};return <FlashcardSystem cards={profile?.flashcards||[]} onAddCard={ha} onDeleteCard={id=>updateProfile({flashcards:(profile?.flashcards||[]).filter(c=>c.id!==id)})} onUpdateSRS={()=>{}}/>}
+function FlashcardWrapper(){const{profile,updateProfile}=useUserProfile();const handleAdd=(term:string,def:string,catId:string,lvl:string)=>{updateProfile({flashcards:[...(profile?.flashcards||[]),{id:Math.random().toString(36).substr(2,9),term,definition:def,categoryId:catId,subcategoryId:"general",createdAt:new Date().toISOString(),nextReview:new Date().toISOString(),interval:0,repetitionCount:0,easeFactor:2.5,level:lvl as any}]})};return <FlashcardSystem cards={profile?.flashcards||[]} onAddCard={handleAdd} onDeleteCard={id=>updateProfile({flashcards:(profile?.flashcards||[]).filter(c=>c.id!==id)})} onUpdateSRS={()=>{}}/>}
 function LangWrapper(){return <LanguageModule languageId="english" languageTitle="English" onExit={()=>window.history.back()}/>}
 function DisciplineWrapper(){const{profile}=useUserProfile();if(!profile)return null;return <DisciplineSystem daysCount={profile.discipline?.daysCount||0} streak={profile.streak||0} tasks={profile.discipline?.dailyTasks||[]} onToggleTask={()=>{}} xp={profile.xp||0} level={profile.level||1}/>}
 
@@ -41,7 +42,7 @@ const router = createBrowserRouter([{path:"/",element:<AppShell/>,children:[
   {path:"dashboard",element:<ProtectedRoute><AppLayout><GrowthDashboard/></AppLayout></ProtectedRoute>},
   {path:"mentor",element:<ProtectedRoute><AppLayout><GrowthAIMentor isOpen={true} onClose={()=>window.history.back()}/></AppLayout></ProtectedRoute>},
   {path:"goals",element:<ProtectedRoute><AppLayout><LazyRoute><GoalsSection/></LazyRoute></AppLayout></ProtectedRoute>},
-  {path:"learn",element:<ProtectedRoute><AppLayout><LazyRoute><div className="p-8 text-center"><h2 className="text-2xl font-black">Learning Center</h2></div></LazyRoute></AppLayout></ProtectedRoute>},
+  {path:"learn",element:<ProtectedRoute><AppLayout><LazyRoute><div className="p-8 text-center"><h2 className="text-2xl font-black">Learning Center</h2><p className="text-slate-500">Select a category</p></div></LazyRoute></AppLayout></ProtectedRoute>},
   {path:"paths",element:<ProtectedRoute><AppLayout><LazyRoute><LearningPaths/></LazyRoute></AppLayout></ProtectedRoute>},
   {path:"lab",element:<ProtectedRoute><AppLayout><LazyRoute><PracticeLab/></LazyRoute></AppLayout></ProtectedRoute>},
   {path:"flashcards",element:<ProtectedRoute><AppLayout><LazyRoute><FlashcardWrapper/></LazyRoute></AppLayout></ProtectedRoute>},
