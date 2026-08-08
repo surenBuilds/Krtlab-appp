@@ -335,6 +335,151 @@ export interface OptimizationAudit {
   timestamp: string;
 }
 
+// ===============================================================
+// SKILLS PASSPORT / PORTFOLIO / OPPORTUNITIES / ORGANIZATIONS
+// Foundation layer for the global platform expansion.
+// Skill mastery is DERIVED from existing progress data (categories/
+// subfields/levels) — no separate fake tracking system.
+// ===============================================================
+
+export type SkillMasteryLevel = 'none' | 'beginner' | 'intermediate' | 'advanced' | 'expert';
+
+export interface SkillMastery {
+  skillId: string;        // maps to a subfield id in categories.ts (e.g. 'python')
+  skillTitle: string;
+  categoryId: string;     // parent category id (e.g. 'tech')
+  masteryPercent: number; // 0-100, derived from progress.categories[categoryId].subfields[skillId]
+  masteryLevel: SkillMasteryLevel;
+  levelsCompleted: number;
+  totalLevels: number;
+  avgQuizAccuracy: number; // 0-100
+  lastActivityAt: string | null;
+  verified: boolean;       // true only if a real Certificate exists for this skill
+}
+
+export interface SkillsPassportProfile {
+  uid: string;
+  isPublic: boolean;           // user-controlled visibility toggle (section 24: user manages public/private)
+  publicSlug?: string;         // e.g. krtlab.app/p/{slug}, generated once, unique
+  displayName: string;
+  bio?: string;
+  location?: string;
+  languages?: string[];
+  photoUrl?: string;
+  skills: SkillMastery[];      // computed, cached snapshot — always recomputable from progress
+  updatedAt: string;
+}
+
+// ---------------- Certificates (section 7) ----------------
+
+export interface Certificate {
+  id: string;               // unique certificate ID, also used in verification URL
+  uid: string;
+  skillId: string;
+  skillTitle: string;
+  issueDate: string;
+  masteryPercentAtIssue: number;
+  verificationUrl: string;  // public verification page, no auth required
+  status: 'pending_payment' | 'issued' | 'revoked';
+  paymentId?: string;       // reference to Payment doc — never store card data here
+}
+
+// ---------------- Portfolio (section 8) ----------------
+
+export type PortfolioItemType = 'project' | 'experience' | 'certificate' | 'link';
+
+export interface PortfolioItem {
+  id: string;
+  uid: string;
+  type: PortfolioItemType;
+  title: string;
+  description: string;
+  skillIds: string[];
+  url?: string;
+  organization?: string;    // for experience items
+  startDate?: string;
+  endDate?: string;
+  isPublic: boolean;
+  source: 'manual' | 'auto_project' | 'auto_certificate' | 'auto_opportunity';
+  createdAt: string;
+}
+
+// ---------------- Opportunities (section 9) ----------------
+
+export type OpportunityType =
+  | 'volunteer' | 'internship' | 'job' | 'freelance'
+  | 'project' | 'competition' | 'scholarship' | 'mentorship' | 'youth';
+
+export interface Opportunity {
+  id: string;
+  organizationId: string;
+  title: string;
+  type: OpportunityType;
+  description: string;
+  location: string;
+  isRemote: boolean;
+  requiredSkillIds: string[];
+  preferredSkillIds: string[];
+  deadline: string | null;
+  applicationUrl?: string;
+  status: 'draft' | 'published' | 'closed';
+  createdAt: string;
+}
+
+export interface SkillMatchResult {
+  opportunityId: string;
+  matchPercent: number;
+  matchedRequired: string[];
+  missingRequired: string[];
+  matchedPreferred: string[];
+}
+
+export interface OpportunityApplication {
+  id: string;
+  opportunityId: string;
+  uid: string;
+  status: 'submitted' | 'viewed' | 'accepted' | 'rejected';
+  submittedAt: string;
+  matchPercentAtApply: number;
+}
+
+// ---------------- Organizations / B2B (sections 19-20) ----------------
+
+export type OrgRole = 'admin' | 'teacher' | 'member';
+
+export interface Organization {
+  id: string;
+  name: string;
+  type: 'school' | 'university' | 'ngo' | 'company' | 'training_center' | 'youth_org';
+  createdBy: string; // uid
+  createdAt: string;
+}
+
+export interface OrganizationMember {
+  uid: string;
+  organizationId: string;
+  role: OrgRole;
+  joinedAt: string;
+}
+
+// ---------------- Analytics (section 23) ----------------
+
+export type AnalyticsEventName =
+  | 'signup' | 'onboarding_completed' | 'goal_created' | 'assessment_completed'
+  | 'lesson_started' | 'lesson_completed' | 'quiz_completed' | 'skill_updated'
+  | 'project_completed' | 'certificate_purchased' | 'certificate_issued'
+  | 'portfolio_updated' | 'opportunity_viewed' | 'opportunity_applied'
+  | 'course_created' | 'course_published' | 'course_purchased'
+  | 'subscription_started' | 'subscription_cancelled';
+
+export interface AnalyticsEvent {
+  name: AnalyticsEventName;
+  uid: string | null;
+  organizationId?: string;
+  metadata?: Record<string, string | number | boolean>;
+  timestamp: string;
+}
+
 export type LessonProgression = {
   userId: string;
   lessonId: string;

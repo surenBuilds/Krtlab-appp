@@ -79,6 +79,66 @@ service cloud.firestore {
       allow update: if isAuthenticated() && isValidLesson(request.resource.data);
     }
 
+    // ===============================================================
+    // Skills Passport / Portfolio / Certificates / Opportunities / Orgs
+    // Default posture: PRIVATE. A doc is only publicly readable if it
+    // explicitly carries isPublic == true, set only by its owner.
+    // ===============================================================
+
+    function isOrgAdmin(orgId) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/organizationMembers/$(orgId + '_' + request.auth.uid)) &&
+        get(/databases/$(database)/documents/organizationMembers/$(orgId + '_' + request.auth.uid)).data.role == 'admin';
+    }
+
+    match /skillsPassports/{uid} {
+      allow read: if isOwner(uid) || resource.data.isPublic == true;
+      allow write: if isOwner(uid);
+    }
+
+    match /portfolioItems/{itemId} {
+      allow read: if isAuthenticated() && (resource.data.uid == request.auth.uid || resource.data.isPublic == true);
+      allow create: if isAuthenticated() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
+    }
+
+    // Certificates are issued server-side only (after real payment verification).
+    // Client can read its own or any certificate for public verification lookup,
+    // but can never create/modify one directly — that would allow forging certs.
+    match /certificates/{certId} {
+      allow read: if true; // verification pages must be publicly checkable without login
+      allow write: if false; // only backend/admin SDK issues certificates
+    }
+
+    match /organizations/{orgId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.createdBy == request.auth.uid;
+      allow update: if isOrgAdmin(orgId);
+    }
+
+    match /organizationMembers/{membershipId} {
+      allow read: if isAuthenticated() &&
+        (resource.data.uid == request.auth.uid || isOrgAdmin(resource.data.organizationId));
+      allow write: if isOrgAdmin(request.resource.data.organizationId) || isOrgAdmin(resource.data.organizationId);
+    }
+
+    match /opportunities/{oppId} {
+      allow read: if resource.data.status == 'published' || isOrgAdmin(resource.data.organizationId);
+      allow write: if isOrgAdmin(request.resource.data.organizationId);
+    }
+
+    match /opportunityApplications/{appId} {
+      allow read: if isAuthenticated() && resource.data.uid == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.uid == request.auth.uid;
+    }
+
+    // Analytics events are write-only from the client (append-only log),
+    // never readable client-side — dashboards read via backend/admin SDK.
+    match /analyticsEvents/{eventId} {
+      allow create: if isAuthenticated() && request.resource.data.uid == request.auth.uid;
+      allow read, update, delete: if false;
+    }
+
     // Discussions collection
     match /discussions/{msgId} {
       allow read: if isAuthenticated();
