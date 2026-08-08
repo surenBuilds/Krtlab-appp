@@ -6,6 +6,10 @@ import { GrowthDashboard } from "../features/dashboard/GrowthDashboard";
 import { GrowthAIMentor } from "../features/mentor/GrowthAIMentor";
 import { GrowthSkillGraph } from "../features/skills/GrowthSkillGraph";
 import { CareerPathEngine } from "../features/career/CareerPathEngine";
+import { AICourseEngine } from "../features/courses/AICourseEngine";
+import { ProfessionalCertificate } from "../features/certificates/ProfessionalCertificate";
+import { OpportunitiesMarket } from "../features/opportunities/OpportunitiesMarket";
+import { LivePortfolio } from "../features/portfolio/LivePortfolio";
 import { useUserProfile } from "../hooks/useUserProfile";
 import { Toaster } from "sonner";
 import { toast } from "sonner";
@@ -52,9 +56,9 @@ const router = createBrowserRouter([{path:"/",element:<AppShell/>,children:[
   {path:"skills",element:<ProtectedRoute><AppLayout><GrowthSkillGraph/></AppLayout></ProtectedRoute>},
   {path:"discipline",element:<ProtectedRoute><AppLayout><LazyRoute><DisciplineWrapper/></LazyRoute></AppLayout></ProtectedRoute>},
   {path:"career",element:<ProtectedRoute><AppLayout><CareerPathEngine/></AppLayout></ProtectedRoute>},
-  {path:"portfolio",element:<ProtectedRoute><AppLayout><LazyRoute><PersonalLearningProfile/></LazyRoute></AppLayout></ProtectedRoute>},
-  {path:"opportunities",element:<ProtectedRoute><AppLayout><LazyRoute><CareerCenter/></LazyRoute></AppLayout></ProtectedRoute>},
-  {path:"courses",element:<ProtectedRoute><AppLayout><LazyRoute><CourseMarketplace/></LazyRoute></AppLayout></ProtectedRoute>},
+  {path:"portfolio",element:<ProtectedRoute><AppLayout><LivePortfolio/></AppLayout></ProtectedRoute>},
+  {path:"opportunities",element:<ProtectedRoute><AppLayout><OpportunitiesMarket/></AppLayout></ProtectedRoute>},
+  {path:"courses",element:<ProtectedRoute><AppLayout><AICourseEngine/></AppLayout></ProtectedRoute>},
   {path:"mentors",element:<ProtectedRoute><AppLayout><LazyRoute><MentorMarketplace/></LazyRoute></AppLayout></ProtectedRoute>},
   {path:"community",element:<ProtectedRoute><AppLayout><LazyRoute><CommunitySection/></LazyRoute></AppLayout></ProtectedRoute>},
   {path:"organization",element:<ProtectedRoute><AppLayout><LazyRoute><OrganizationDashboard/></LazyRoute></AppLayout></ProtectedRoute>},
