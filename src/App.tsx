@@ -97,7 +97,7 @@ export default function App() {
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [lastVoiceCommand, setLastVoiceCommand] = useState<string | null>(null);
   const [isSplashComplete, setIsSplashComplete] = useState(false);
-  const [certificateData, setCertificateData] = useState<{ courseName: string; levelName: string; date: string } | null>(null);
+  const [certificateData, setCertificateData] = useState<{ courseName: string; levelName: string; date: string; skillId: string } | null>(null);
 
   const handleLogout = async () => {
     try {
@@ -224,7 +224,8 @@ export default function App() {
         setCertificateData({
           courseName: subfield.title,
           levelName: `Մակարդակ ${maxLevels} / Ավարտական`,
-          date: new Date().toLocaleDateString('hy-AM')
+          date: new Date().toLocaleDateString('hy-AM'),
+          skillId: subfieldId
         });
       }
     }
@@ -1205,6 +1206,7 @@ export default function App() {
             courseName={certificateData.courseName}
             levelName={certificateData.levelName}
             completionDate={certificateData.date}
+            skillId={certificateData.skillId}
             onClose={() => setCertificateData(null)}
           />
         )}

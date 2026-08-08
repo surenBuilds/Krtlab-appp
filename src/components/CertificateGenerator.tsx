@@ -1,19 +1,20 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Award, Download, ShieldCheck, QrCode, ExternalLink, Loader2 } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
+import { Award, Download, ShieldCheck, Loader2 } from 'lucide-react';
 import jspdf from 'jspdf';
 import html2canvas from 'html2canvas';
 import { isQuotaError, generateCertificateOutcomes } from '../services/geminiService';
 import { UserProfile } from '../types';
 import { Logo } from './Logo';
 import { toast } from 'sonner';
+import { requestCertificate, CertificateRequestResult } from '../services/certificateService';
 
 interface CertificateProps {
   profile: UserProfile;
   courseName: string;
   levelName: string;
   completionDate: string;
+  skillId: string;
   onClose: () => void;
 }
 
@@ -22,15 +23,36 @@ export const CertificateGenerator: React.FC<CertificateProps> = ({
   courseName, 
   levelName, 
   completionDate,
+  skillId,
   onClose 
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [learningOutcomes, setLearningOutcomes] = useState<string>('');
   const [isAiLoading, setIsAiLoading] = useState(true);
+  const [certRequest, setCertRequest] = useState<CertificateRequestResult | null>(null);
+  const [isRequesting, setIsRequesting] = useState(false);
   const certificateRef = useRef<HTMLDivElement>(null);
-  
-  const serialNumber = `KRTLAB-${Math.random().toString(36).substring(2, 10).toUpperCase()}-${new Date().getFullYear()}`;
-  const verificationUrl = `https://krtlab.edu/verify/${serialNumber}`;
+
+  // This PDF is a free, unofficial achievement record — not a paid Verified
+  // Certificate. It never claims verification status or a fake serial number.
+  const handleRequestOfficialCertificate = async () => {
+    setIsRequesting(true);
+    try {
+      const result = await requestCertificate(skillId);
+      setCertRequest(result);
+      if (result.paymentAvailable && result.checkoutUrl) {
+        window.location.href = result.checkoutUrl;
+      } else {
+        toast.info('Վճարային համակարգը դեռ միացված չէ', {
+          description: result.message || 'Official Verified Certificate-ը շուտով հասանելի կլինի։'
+        });
+      }
+    } catch (err: any) {
+      toast.error('Չհաջողվեց հայցել հավաստագիրը', { description: err.message });
+    } finally {
+      setIsRequesting(false);
+    }
+  };
 
   // Generate AI Learning Outcomes
   React.useEffect(() => {
@@ -193,57 +215,47 @@ export const CertificateGenerator: React.FC<CertificateProps> = ({
                     <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Ամսաթիվ / Date</p>
                     <p className="text-lg font-bold text-slate-800">{completionDate}</p>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Սերիական համար / Serial No.</p>
-                    <p className="text-sm font-mono font-bold text-slate-500">{serialNumber}</p>
-                  </div>
                 </div>
 
-                <div className="flex flex-col items-center gap-2">
-                  <div className="p-3 bg-white border-2 border-slate-100 rounded-2xl shadow-sm">
-                    <QRCodeSVG value={verificationUrl} size={80} />
-                  </div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Verify Authenticity</p>
-                </div>
-
-                <div className="text-right space-y-4">
-                  <div className="space-y-2">
-                    <div className="h-12 flex items-end justify-end">
-                      <img 
-                        src="https://upload.wikimedia.org/wikipedia/commons/3/3a/Jon_Kirsch%27s_Signature.png" 
-                        alt="Signature" 
-                        className="h-full opacity-80 grayscale brightness-50"
-                        referrerPolicy="no-referrer"
-                      />
-                    </div>
-                    <div className="w-48 h-0.5 bg-slate-200 ml-auto" />
-                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Authorized Signature</p>
-                    <p className="text-sm font-bold text-slate-800">KrtLab Academic Board</p>
-                  </div>
+                <div className="text-right space-y-2">
+                  <div className="w-48 h-0.5 bg-slate-200 ml-auto" />
+                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest">KrtLab</p>
+                  <p className="text-sm font-bold text-slate-800">Achievement Record</p>
                 </div>
               </div>
 
-              {/* Verification Badge */}
+              {/* This free PDF is an unofficial achievement record, not a verified credential */}
               <div className="absolute top-12 right-12 flex flex-col items-center opacity-20">
-                <ShieldCheck size={80} className="text-primary" />
-                <span className="text-[10px] font-black uppercase tracking-widest mt-2">Verified Platform</span>
+                <Award size={80} className="text-primary" />
+                <span className="text-[10px] font-black uppercase tracking-widest mt-2">Achievement</span>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="p-8 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-4 text-slate-500">
-            <ShieldCheck className="text-emerald-500" size={20} />
-            <p className="text-sm font-medium">Այս հավաստագիրը պաշտպանված է թվային ստորագրությամբ և QR կոդով:</p>
+        <div className="p-8 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4 text-slate-500 text-left">
+            <ShieldCheck className="text-slate-300 shrink-0" size={20} />
+            <p className="text-sm font-medium">
+              Սա անվճար achievement record է, ոչ պաշտոնական հավաստագիր։ Պաշտոնական, ստուգելի KrtLab Verified Certificate ստանալու համար՝
+            </p>
           </div>
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2 text-primary hover:underline cursor-pointer">
-              <ExternalLink size={16} />
-              <span className="text-sm font-bold">Ստուգել առցանց</span>
-            </div>
-          </div>
+          <button
+            onClick={handleRequestOfficialCertificate}
+            disabled={isRequesting}
+            className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-2xl font-black text-sm shadow-lg hover:bg-slate-800 transition-all disabled:opacity-50 shrink-0"
+          >
+            {isRequesting ? <Loader2 className="animate-spin" size={16} /> : <ShieldCheck size={16} />}
+            Ստանալ Verified Certificate
+          </button>
         </div>
+        {certRequest && !certRequest.paymentAvailable && (
+          <div className="px-8 pb-6 -mt-2">
+            <p className="text-xs text-amber-600 font-bold bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+              {certRequest.message}
+            </p>
+          </div>
+        )}
       </motion.div>
     </div>
   );
