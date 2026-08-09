@@ -31,12 +31,14 @@ import { PersonalLearningProfile } from './components/PersonalLearningProfile';
 import { CareerCenter } from './components/CareerCenter';
 import { OrganizationDashboard } from './components/OrganizationDashboard';
 import { DeveloperPlatform } from './components/DeveloperPlatform';
+import { GrowthDashboard } from './components/GrowthDashboard';
+import { GoalSystem } from './components/GoalSystem';
 import { MonetizationSystem } from './components/MonetizationSystem';
 import { Leaderboard } from './features/leaderboard/Leaderboard';
 import { PremiumGate } from './features/premium/PremiumGate';
 
 import { 
-  Trophy, BookOpen, LayoutDashboard, MessageSquare, BrainCircuit, 
+  Trophy, BookOpen, BarChart3, LayoutDashboard, MessageSquare, BrainCircuit, 
   Menu, X, ChevronRight, ChevronLeft, CheckCircle2, Award, Zap,
   Wallet, Briefcase, Cpu, FlaskConical, Globe, Scale, 
   Building2, Plane, Truck, Rocket, Factory, RefreshCcw, Map,
@@ -74,7 +76,7 @@ export default function App() {
   } = useUserProfile();
   const { preGenerate } = useLessons();
   const { t, language, setLanguage } = useTranslation();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'learn' | 'flashcards' | 'paths' | 'games' | 'goals' | 'creator' | 'lab' | 'school' | 'module' | 'mentor-marketplace' | 'course-marketplace' | 'skill-graph' | 'portfolio' | 'career-center' | 'org-dashboard' | 'dev-platform' | 'monetization' | 'leaderboard'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'learn' | 'flashcards' | 'paths' | 'games' | 'goals' | 'creator' | 'lab' | 'school' | 'module' | 'mentor-marketplace' | 'course-marketplace' | 'skill-graph' | 'portfolio' | 'career-center' | 'org-dashboard' | 'dev-platform' | 'monetization' | 'leaderboard' | 'growth-dashboard' | 'goals-system'>('dashboard');
   const [labTopic, setLabTopic] = useState<{ field: string, topic: string } | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
@@ -430,6 +432,18 @@ export default function App() {
             onClick={() => setActiveTab('leaderboard')}
             icon={<Trophy size={16} />}
             label="Leaderboard"
+          />
+          <NavItem 
+            active={activeTab === 'growth-dashboard'} 
+            onClick={() => setActiveTab('growth-dashboard')}
+            icon={<BarChart3 size={16} />}
+            label="Growth Dashboard"
+          />
+          <NavItem 
+            active={activeTab === 'goals-system'} 
+            onClick={() => setActiveTab('goals-system')}
+            icon={<Target size={16} />}
+            label="Goals"
           />
 
           {(isAdmin || isTeacher) && (
