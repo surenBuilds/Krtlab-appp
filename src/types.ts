@@ -194,6 +194,52 @@ export interface PracticeLabTask {
   xpReward: number;
 }
 
+
+// ── Intelligence Core State (persisted in UserProfile) ──
+
+export interface PersistedGoal {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  status: 'active' | 'completed' | 'abandoned';
+  priority: 'low' | 'medium' | 'high';
+  progress: number; // 0-100
+  linkedSkillIds: string[];
+  difficulty: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+  estimatedHours: number;
+  totalWeeks: number;
+  requiredSkills: { skillId: string; targetLevel: number; priority: string }[];
+  milestones: { title: string; skills: string[]; estimatedWeeks: number; order: number; completed: boolean }[];
+  learningPlan: { week: number; focus: string; skills: string[]; tasks: string[] }[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PersistedSkillState {
+  skillId: string;
+  name: string;
+  category: string;
+  masteryScore: number; // 0-100
+  confidence: 'low' | 'medium' | 'high';
+  levelLabel: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+  evidenceCount: number;
+  lastAssessed: string | null;
+}
+
+export interface PersistedMission {
+  date: string;
+  tasks: { id: string; title: string; type: string; skillId: string; completed: boolean; xpReward: number }[];
+}
+
+export interface IntelligenceState {
+  goals: PersistedGoal[];
+  skillBaseline: PersistedSkillState[];
+  lastMission: PersistedMission | null;
+  lastNextAction: { type: string; skillId: string; skillName: string; reason: string; suggestedTask: string; priority: string; urgency: string } | null;
+  updatedAt: string;
+}
+
 export type UserProfile = {
   uid?: string;
   email?: string;
@@ -257,6 +303,7 @@ export type UserProfile = {
   practiceProgress?: Record<string, number>; // subfieldId -> currentLevel (1-20)
   labXp?: number;
   labStreak?: number;
+  intelligenceState?: IntelligenceState;
 }
 
 export type PracticeSubmission = {

@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { UserProfile, DailyTask, GameSessionResult } from '../types';
+import { UserProfile, DailyTask, GameSessionResult, IntelligenceState } from '../types';
 import { CheckCircle2 } from 'lucide-react';
 import { ACHIEVEMENTS } from '../data/achievements';
 import { toast } from 'sonner';
 import { auth, db } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { onLessonCompleted, onHabitCompleted, onProjectCompleted } from '../services/growthEngine';
+import { buildSkillGraph, diagnoseSkills, computeNextAction } from '../services/intelligenceEngine';
 import { calculateSkillPoints } from '../data/skillMappings';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { AdaptiveGameService } from '../services/adaptiveGameService';
@@ -492,6 +493,37 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setProfile(nextProfile);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(nextProfile));
       syncToFirestoreNow(nextProfile).catch(() => {});
+      
+      // Update Intelligence Core state after lesson completion
+      if (nextProfile.intelligenceState?.goals?.length) {
+        try {
+          const is = nextProfile.intelligenceState;
+          const baseline = diagnoseSkills(nextProfile as any);
+          const sg = buildSkillGraph(nextProfile as any);
+          const domainGoals = is.goals.map(g => ({
+            id: g.id, title: g.title, description: g.description,
+            category: g.category as any, status: g.status, priority: g.priority,
+            progress: g.progress, linkedSkillIds: g.linkedSkillIds,
+            linkedProjectIds: [] as string[], linkedHabitIds: [] as string[],
+            difficulty: g.difficulty, estimatedHours: g.estimatedHours,
+            tasks: [] as any[], createdAt: g.createdAt, updatedAt: g.updatedAt,
+          }));
+          const na = computeNextAction(sg, domainGoals);
+          
+          const nextIntel = {
+            ...is,
+            skillBaseline: baseline,
+            lastNextAction: {
+              type: na.type, skillId: na.skillId, skillName: na.skillName,
+              reason: na.reason, suggestedTask: na.suggestedTask,
+              priority: na.priority, urgency: na.urgency,
+            },
+            updatedAt: new Date().toISOString(),
+          };
+          const withIntel = { ...nextProfile, intelligenceState: nextIntel };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(withIntel));
+        } catch (e) { /* non-critical */ }
+      }
     }
   }, [calculateStreak, syncToFirestoreNow]);
 
@@ -671,12 +703,55 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   }, [profile, syncToFirestoreNow]);
 
+  const updateIntelligenceState = useCallback((updates: Partial<IntelligenceState>) => {
+    setProfile(prev => {
+      if (!prev) return prev;
+      const current = prev.intelligenceState || { goals: [], skillBaseline: [], lastMission: null, lastNextAction: null, updatedAt: '' };
+      const next: IntelligenceState = { ...current, ...updates, updatedAt: new Date().toISOString() };
+      const nextProfile = { ...prev, intelligenceState: next };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextProfile));
+      syncToFirestoreNow(nextProfile).catch(() => {});
+      
+      // Update Intelligence Core state after lesson completion
+      if (nextProfile.intelligenceState?.goals?.length) {
+        try {
+          const is = nextProfile.intelligenceState;
+          const baseline = diagnoseSkills(nextProfile as any);
+          const sg = buildSkillGraph(nextProfile as any);
+          const domainGoals = is.goals.map(g => ({
+            id: g.id, title: g.title, description: g.description,
+            category: g.category as any, status: g.status, priority: g.priority,
+            progress: g.progress, linkedSkillIds: g.linkedSkillIds,
+            linkedProjectIds: [] as string[], linkedHabitIds: [] as string[],
+            difficulty: g.difficulty, estimatedHours: g.estimatedHours,
+            tasks: [] as any[], createdAt: g.createdAt, updatedAt: g.updatedAt,
+          }));
+          const na = computeNextAction(sg, domainGoals);
+          
+          const nextIntel = {
+            ...is,
+            skillBaseline: baseline,
+            lastNextAction: {
+              type: na.type, skillId: na.skillId, skillName: na.skillName,
+              reason: na.reason, suggestedTask: na.suggestedTask,
+              priority: na.priority, urgency: na.urgency,
+            },
+            updatedAt: new Date().toISOString(),
+          };
+          const withIntel = { ...nextProfile, intelligenceState: nextIntel };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(withIntel));
+        } catch (e) { /* non-critical */ }
+      }
+      return nextProfile;
+    });
+  }, [syncToFirestoreNow]);
+
   return (
     <UserContext.Provider value={{ 
       profile, updateProfile, updateProgress, updateAdaptiveProgress, addFlashcards, updateFlashcardSRS, 
       resetProgress, completeDiscovery, toggleDailyTask, completePracticeProject, 
       updateGameScore, updateCustomGoal, activateGoal, submitPracticeWork,
-      updateXp, toggleDemoMode, updateRole, syncNow,
+      updateXp, updateIntelligenceState, toggleDemoMode, updateRole, syncNow,
       loading, user 
     }}>
       {children}
