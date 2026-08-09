@@ -431,7 +431,6 @@ export default function App() {
             icon={<Trophy size={16} />}
             label="Leaderboard"
           />
-          />
 
           {(isAdmin || isTeacher) && (
             <>
