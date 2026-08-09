@@ -4,7 +4,7 @@
  */
 
 import { SKILL_DEFINITIONS, SUBFIELD_SKILL_MAP } from "../data/skillMappings";
-import type { GrowthProfile, Goal, SkillEvidence, SkillLevel, Priority } from "../types/domain";
+import type { GrowthProfile, Goal, SkillEvidence, SkillLevel, Priority } from "../types/learner";
 
 export interface DecomposedGoal {
   goal: Goal;
@@ -35,7 +35,7 @@ export function decomposeGoal(goalText: string, category: string, deadlineWeeks:
   const milestones = skillIds.map((sid,i)=>({title:`Master ${getSkillName(sid)}`,skills:[sid],estimatedWeeks:Math.ceil(totalWeeks/skillIds.length),order:i+1}));
   const learningPlan: {week:number;focus:string;skills:string[];tasks:string[]}[] = [];
   for(let w=0;w<totalWeeks;w++){const si=w%skillIds.length;learningPlan.push({week:w+1,focus:getSkillName(skillIds[si]),skills:[skillIds[si]],tasks:[`Learn ${getSkillName(skillIds[si])} fundamentals`,"Complete 3 practice exercises","Take assessment quiz","Review mistakes"]});}
-  const goal: Goal = {id:crypto.randomUUID?.()||`goal-${Date.now()}`,title:goalText,description:`AI-decomposed: ${goalText}`,category:category as Goal["category"],status:"active",priority:"high",progress:0,linkedSkillIds:skillIds,linkedProjectIds:[],linkedHabitIds:[],difficulty:"intermediate",estimatedHours:totalWeeks*10,tasks:[],createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+  const goal: Goal = {id:crypto.randomUUID?.()||`goal-${Date.now()}`,title:goalText,description:`AI-decomposed: ${goalText}`,category:category as Goal["category"],status:"active",priority:"high",progress:0,difficulty:"intermediate",estimatedHours:totalWeeks*10,subGoals:[],requiredSkills:[],requiredKnowledge:[],milestones:[],learningPlan:[],actualHours:0,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
   return {goal,requiredSkills,milestones,learningPlan,totalWeeks};
 }
 
@@ -65,7 +65,7 @@ export type ActionType="teach"|"practice"|"project"|"assess"|"review"|"advance";
 export interface NextAction {type:ActionType;skillId:string;skillName:string;reason:string;suggestedTask:string;priority:Priority;urgency:"now"|"today"|"this_week"|"next_week";}
 
 export function computeNextAction(sg:SkillNode[],goals:Goal[],rm:string[]=[],_t:number=30):NextAction{
-  const ag=goals.filter(g=>g.status==="active");const ask=new Set(ag.flatMap(g=>g.linkedSkillIds));
+  const ag=goals.filter(g=>g.status==="active");const ask=new Set(new Set<string>());
   let ts:SkillNode|undefined;
   if(ask.size>0){const gs=sg.filter(n=>ask.has(n.skillId));ts=gs.sort((a,b)=>a.masteryScore-b.masteryScore)[0];}
   if(!ts)ts=sg.sort((a,b)=>a.masteryScore-b.masteryScore)[0];

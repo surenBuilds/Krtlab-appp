@@ -4,7 +4,7 @@
 import { useCallback, useMemo } from "react";
 import { useUserProfile } from "./useUserProfile";
 import { onLessonCompleted, onProjectCompleted, onGoalProgress, calculateGrowthScore, buildMentorContext } from "../services/growthEngine";
-import type { GrowthProfile, Goal, UserSkill, LearningProgressRecord, Project, Habit, CareerItem, MentorContext } from "../types/domain";
+import type { GrowthProfile, Goal, UserSkill, LearningProgressRecord, Project, MentorContext } from "../types/learner";
 
 export function useGrowthProfile() {
   const userProfile = useUserProfile();
@@ -31,7 +31,7 @@ export function useGrowthProfile() {
     return result.recommendedActions;
   }, [profile, updateProfile]);
 
-  const getMentorContext = useCallback((params: { goals: Goal[]; skills: UserSkill[]; recentLearning: LearningProgressRecord[]; projects: Project[]; habits: Habit[]; careerItem?: CareerItem }): MentorContext | null => {
+  const getMentorContext = useCallback((params: { goals: Goal[]; skills: UserSkill[]; recentLearning: LearningProgressRecord[]; projects: Project[]; habits: any[]; careerItem?: any }): MentorContext | null => {
     if (!profile) return null;
     return buildMentorContext({ profile: profile as unknown as GrowthProfile, ...params });
   }, [profile]);

@@ -5,7 +5,7 @@ import { cn } from "../../lib/utils";
 import { useUserProfile } from "../../hooks/useUserProfile";
 import { SKILL_DEFINITIONS } from "../../data/skillMappings";
 import { toast } from "sonner";
-import type { GrowthProfile } from "../../types/domain";
+import type { GrowthProfile } from "../../types/learner";
 
 interface Opportunity {
   id: string; type: "job" | "volunteer" | "internship" | "freelance" | "scholarship" | "mentorship";

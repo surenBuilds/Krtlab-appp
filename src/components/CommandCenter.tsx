@@ -20,7 +20,7 @@ function buildProfile(gp: any): LearnerProfile {
     uid: gp?.uid, name: gp?.name || "Learner", email: gp?.email,
     preferredLanguage: "hy", role: gp?.role || "student", isDemoMode: gp?.isDemoMode || false,
     xp: gp?.xp || 0, level: gp?.level || 1, streak: gp?.streak || 0, points: gp?.points || 0,
-    lastStreakUpdate: gp?.lastStreakUpdate || null, growthScore: gp?.growthScore || 0,
+    lastStreakUpdate: gp?.lastStreakUpdate || null, growthScore: gp?.growthScore || 0, strengths: gp?.strengths || [], weaknesses: gp?.weaknesses || [],
     goals: gp?.intelligenceState?.goals?.map((g: any) => ({
       ...g, subGoals: g.subGoals || [], requiredKnowledge: g.requiredKnowledge || [],
       parentGoalId: g.parentGoalId, actualHours: g.actualHours || 0,

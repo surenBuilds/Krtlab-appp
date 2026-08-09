@@ -30,9 +30,7 @@ import type {
   Certificate,
   MentorContext,
   AIAction,
-  CareerItem,
-  EnrolledCourse,
-} from '../types/domain';
+} from '../types/learner';
 import { calculateSkillPoints } from '../data/skillMappings';
 
 // ============================================================================
@@ -306,7 +304,7 @@ export function buildMentorContext(params: {
   skills: UserSkill[];
   recentLearning: LearningProgressRecord[];
   projects: Project[];
-  careerItem?: CareerItem;
+  careerItem?: any;
 }): MentorContext {
   const { profile, goals, skills, recentLearning, projects, careerItem } = params;
 
@@ -367,7 +365,7 @@ export function calculateGrowthScore(params: {
   goals: Goal[];
   projects: Project[];
   habits: { currentStreak: number }[];
-  careerItem?: CareerItem;
+  careerItem?: any;
 }): number {
   const { profile, skills, goals, projects, habits, careerItem } = params;
 

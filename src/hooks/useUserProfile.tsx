@@ -506,7 +506,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             progress: g.progress, linkedSkillIds: g.linkedSkillIds,
             linkedProjectIds: [] as string[], linkedHabitIds: [] as string[],
             difficulty: g.difficulty, estimatedHours: g.estimatedHours,
-            tasks: [] as any[], createdAt: g.createdAt, updatedAt: g.updatedAt,
+            tasks: [] as any[], subGoals: [] as string[],
+            requiredSkills: (g as any).requiredSkills || [],
+            requiredKnowledge: (g as any).requiredKnowledge || [],
+            milestones: (g as any).milestones || [],
+            learningPlan: (g as any).learningPlan || [],
+            actualHours: (g as any).actualHours || 0,
+            createdAt: g.createdAt, updatedAt: g.updatedAt,
           }));
           const na = computeNextAction(sg, domainGoals);
           

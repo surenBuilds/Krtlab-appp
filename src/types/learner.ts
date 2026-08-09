@@ -62,6 +62,8 @@ export interface LearnerProfile {
   points: number;
   lastStreakUpdate: string | null;
   growthScore: number; // 0-1000 composite
+  strengths: string[]; // compat
+  weaknesses: string[]; // compat
 
   // ── Intelligence Core ──
   goals: LearnerGoal[];
@@ -94,6 +96,7 @@ export interface LearnerProfile {
   achievements?: string[];
   gameHighScores?: Record<string, number>;
   completedProjects?: string[];
+  projectsCompleted?: number;
 
   // ── Timestamps ──
   createdAt: string;
@@ -515,3 +518,72 @@ export interface LearnerAnalytics {
   
   updatedAt: string;
 }
+
+// ============================================================================
+// LEGACY COMPAT TYPES
+// ============================================================================
+
+/** @deprecated — use LearnerProfile */
+export type GrowthProfile = LearnerProfile;
+
+/** @deprecated — use LearnerGoal */
+export type Goal = LearnerGoal;
+
+/** @deprecated — use LearnerSkill */
+export type UserSkill = LearnerSkill;
+
+/** @deprecated — use LearnerProject */
+export type Project = LearnerProject;
+
+export type SkillPoints = { skillId: string; points: number; };
+export type LearningProgressRecord = { id: string; categoryId: string; subfieldId: string; levelId: number; lessonCompleted: boolean; quizCompleted: boolean; quizScore: number; practiceCompleted: boolean; practiceScore: number; gameCompleted: boolean; gameScore: number; timeSpent: number; mistakes: string[]; questionsAsked: number; aiLevel?: string; aiWeakPoints?: string[]; aiRecommendation?: string; skillsGained: SkillPoints[]; completedAt?: string; updatedAt: string; };
+
+export type MentorContext = {
+  profile: { name: string; xp: number; level: number; streak: number; strengths: string[]; weaknesses: string[]; };
+  activeGoals: { title: string; progress: number; priority: Priority; category: string; }[];
+  topSkills: { name: string; currentLevel: number; levelLabel: SkillLevel; }[];
+  recentLearning: { subfieldId: string; levelId: number; quizScore: number; aiLevel?: string; }[];
+  activeProjects: { title: string; status: string; progress: number; skillsUsed: string[]; }[];
+  habits: { title: string; currentStreak: number; frequency: string; }[];
+  careerGaps: CareerSkillGap[];
+};
+
+/** @deprecated — use CareerSkillGap */
+export type SkillGap = CareerSkillGap;
+
+/** @deprecated — use SkillLevel */
+export type SkillGap_old = CareerSkillGap;
+
+/** Additional compat alias for goal properties */
+export interface LearnerGoalCompat extends LearnerGoal {
+  linkedSkillIds: string[];
+  linkedProjectIds: string[];
+  linkedHabitIds: string[];
+  tasks: any[];
+}
+
+export type AIAction = {
+  type: 'learning' | 'project' | 'habit' | 'goal' | 'career' | 'reflection' | 'portfolio';
+  title: string;
+  priority: Priority;
+  description?: string;
+  linkPath?: string;
+};
+
+export type AnalyticsEventType = 'lesson_completed' | 'quiz_passed' | 'skill_leveled_up' | 'goal_milestone' | 'project_completed' | 'streak_extended' | 'certificate_earned' | 'habit_completed' | 'ai_conversation' | 'practice_completed' | 'game_completed' | 'reflection_written';
+export type AnalyticsEvent = { id: string; type: AnalyticsEventType; data: Record<string, unknown>; xpGained: number; skillsAffected: SkillPoints[]; timestamp: string; };
+
+export interface Certificate {
+  id: string; title: string; issuer: string; courseName: string; levelName: string;
+  certificateUrl?: string; verificationCode?: string;
+  skillsValidated: string[]; earnedAt: string; expiresAt?: string;
+}
+export interface EnrolledCourse {
+  id: string; title: string; provider: string; category: string;
+  totalLessons: number; completedLessons: number; progress: number;
+  skillsGained: SkillPoints[]; startedAt: string; completedAt?: string;
+  lastActivityAt: string; aiSummary?: string; difficulty: SkillLevel;
+}
+
+// Compat: CareerItem (used by growthEngine.ts function signatures)
+export type CareerItemCompat = any; // replaced with any — the actual type is rarely used

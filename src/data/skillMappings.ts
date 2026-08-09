@@ -8,7 +8,7 @@
  * Points are proportional to the level completed and difficulty.
  */
 
-import type { SkillPoints } from '../types/domain';
+import type { SkillPoints } from '../types/learner';
 
 export interface SubfieldSkillMapping {
   categoryId: string;

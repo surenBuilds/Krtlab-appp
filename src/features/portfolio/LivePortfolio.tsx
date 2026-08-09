@@ -5,7 +5,7 @@ import { cn } from "../../lib/utils";
 import { useUserProfile } from "../../hooks/useUserProfile";
 import { SKILL_DEFINITIONS } from "../../data/skillMappings";
 import { CATEGORIES } from "../../data/categories";
-import type { GrowthProfile } from "../../types/domain";
+import type { GrowthProfile } from "../../types/learner";
 
 export const LivePortfolio: React.FC = () => {
   const { profile } = useUserProfile();

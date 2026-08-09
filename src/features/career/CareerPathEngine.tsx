@@ -4,7 +4,7 @@ import { motion } from "motion/react";
 import { Briefcase, TrendingUp, Target, ArrowRight, AlertCircle } from "lucide-react";
 import { useUserProfile } from "../../hooks/useUserProfile";
 import { SKILL_DEFINITIONS } from "../../data/skillMappings";
-import type { GrowthProfile, SkillGap } from "../../types/domain";
+import type { GrowthProfile, CareerSkillGap } from "../../types/learner";
 
 interface CareerRole { title: string; description: string; requiredSkills: string[]; salaryRange: string; demand: string; }
 const CAREER_ROLES: CareerRole[] = [
@@ -24,7 +24,7 @@ export const CareerPathEngine: React.FC = () => {
 
   const roles = useMemo(() => CAREER_ROLES.map((role) => {
     let matched = 0;
-    const gaps: SkillGap[] = role.requiredSkills.map((sid, i) => {
+    const gaps: { skillId: string; current: number; required: number; priority: string }[] = role.requiredSkills.map((sid, i) => {
       const isStrong = userStrengths.includes(sid);
       if (isStrong) matched++;
       return { skillId: sid, current: isStrong ? 65 : 0, required: 70, priority: isStrong ? "low" as const : i === 0 ? "high" as const : "medium" as const };

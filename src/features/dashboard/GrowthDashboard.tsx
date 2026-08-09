@@ -8,7 +8,7 @@ import { useUserProfile } from "../../hooks/useUserProfile";
 import { calculateGrowthScore } from "../../services/growthEngine";
 import { StreakCalendar } from "../../components/StreakCalendar";
 import { AchievementsList } from "../../components/AchievementsList";
-import type { GrowthProfile, AIAction } from "../../types/domain";
+import type { GrowthProfile, AIAction } from "../../types/learner";
 
 export const GrowthDashboard: React.FC = () => {
   const { profile } = useUserProfile();

@@ -5,7 +5,7 @@ import { cn } from "../../lib/utils";
 import { useUserProfile } from "../../hooks/useUserProfile";
 import { calculateGrowthScore } from "../../services/growthEngine";
 import { chatWithMentor } from "../../services/geminiService";
-import type { GrowthProfile } from "../../types/domain";
+import type { GrowthProfile } from "../../types/learner";
 
 interface Props { isOpen: boolean; onClose: () => void }
 

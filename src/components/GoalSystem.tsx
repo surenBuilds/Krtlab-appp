@@ -55,7 +55,7 @@ export const GoalSystem: React.FC = () => {
       status: "active",
       priority: result.goal.priority as any,
       progress: 0,
-      linkedSkillIds: result.goal.linkedSkillIds,
+      linkedSkillIds: result.goal.requiredSkills.map(s => s.skillId),
       difficulty: "intermediate",
       estimatedHours: result.goal.estimatedHours,
       totalWeeks: result.totalWeeks,
@@ -128,7 +128,7 @@ export const GoalSystem: React.FC = () => {
           </div>
           <div className="mt-4 flex gap-6 text-sm">
             <span className="flex items-center gap-2"><Clock size={14}/>{goal.estimatedHours}h</span>
-            <span className="flex items-center gap-2"><BrainCircuit size={14}/>{goal.linkedSkillIds.length} skills</span>
+            <span className="flex items-center gap-2"><BrainCircuit size={14}/>{goal.requiredSkills.length} skills</span>
             <span className="flex items-center gap-2"><BarChart3 size={14}/>{goal.progress}%</span>
           </div>
         </div>
