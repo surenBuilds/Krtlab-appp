@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { BrainCircuit, Zap, Trophy, AlertCircle, Sparkles, CheckCircle2, ArrowRight } from "lucide-react";
 import { cn } from "../lib/utils";
