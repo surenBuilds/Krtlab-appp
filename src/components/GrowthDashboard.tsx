@@ -11,9 +11,8 @@ export const GrowthDashboard: React.FC = () => {
   const gp = profile as any;
   const [showAllSkills, setShowAllSkills] = useState(false);
 
-  // Read goals from persistent state (with localStorage fallback)
-  const goals: PersistedGoal[] = useMemo(() => {
-    if (profile?.intelligenceState?.goals?.length) return profile.intelligenceState.goals;
+  // Read goals from persistent state — useState init from localStorage
+  const [goals, setGoals] = useState<PersistedGoal[]>(() => {
     try {
       const stored = localStorage.getItem('learnix_user_profile');
       if (stored) {
@@ -22,6 +21,9 @@ export const GrowthDashboard: React.FC = () => {
       }
     } catch (e) {}
     return [];
+  });
+  useEffect(() => {
+    if (profile?.intelligenceState?.goals?.length) setGoals(profile.intelligenceState.goals);
   }, [profile?.intelligenceState?.goals]);
 
   // Convert persisted goals to domain Goals for the engine

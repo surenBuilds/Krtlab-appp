@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { motion } from "motion/react";
 import { Target, ChevronRight, BrainCircuit, Clock, CheckCircle2, Plus, BarChart3 } from "lucide-react";
 import { cn } from "../lib/utils";
@@ -12,13 +12,9 @@ export const GoalSystem: React.FC = () => {
   const [goalInput, setGoalInput] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Read goals from persistent state (with localStorage fallback)
-  const goals: PersistedGoal[] = useMemo(() => {
-    // Primary: React context profile
-    if (profile?.intelligenceState?.goals?.length) {
-      return profile.intelligenceState.goals;
-    }
-    // Fallback: direct localStorage read (handles stale context during navigation)
+  // Read goals from persistent state
+  // Use useState initialized from localStorage directly (survives navigation re-mounts)
+  const [goals, setGoals] = useState<PersistedGoal[]>(() => {
     try {
       const stored = localStorage.getItem('learnix_user_profile');
       if (stored) {
@@ -27,8 +23,15 @@ export const GoalSystem: React.FC = () => {
           return parsed.intelligenceState.goals;
         }
       }
-    } catch (e) { /* ignore */ }
+    } catch (e) {}
     return [];
+  });
+
+  // Sync from React context when profile updates (catches fresh Provider state)
+  useEffect(() => {
+    if (profile?.intelligenceState?.goals?.length) {
+      setGoals(profile.intelligenceState.goals);
+    }
   }, [profile?.intelligenceState?.goals]);
 
   const baseline = useMemo<SkillBaseline[]>(
