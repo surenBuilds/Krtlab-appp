@@ -12,11 +12,24 @@ export const GoalSystem: React.FC = () => {
   const [goalInput, setGoalInput] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Read goals from persistent state (not local useState)
-  const goals: PersistedGoal[] = useMemo(
-    () => profile?.intelligenceState?.goals || [],
-    [profile?.intelligenceState?.goals]
-  );
+  // Read goals from persistent state (with localStorage fallback)
+  const goals: PersistedGoal[] = useMemo(() => {
+    // Primary: React context profile
+    if (profile?.intelligenceState?.goals?.length) {
+      return profile.intelligenceState.goals;
+    }
+    // Fallback: direct localStorage read (handles stale context during navigation)
+    try {
+      const stored = localStorage.getItem('learnix_user_profile');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.intelligenceState?.goals?.length) {
+          return parsed.intelligenceState.goals;
+        }
+      }
+    } catch (e) { /* ignore */ }
+    return [];
+  }, [profile?.intelligenceState?.goals]);
 
   const baseline = useMemo<SkillBaseline[]>(
     () => diagnoseSkills(gp),
