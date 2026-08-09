@@ -1,6 +1,6 @@
 // Vercel Serverless Function — Gemini API proxy
-// Handles all /api/gemini/* requests securely
-// GEMINI_API_KEY is read from server-side environment only (never exposed to browser)
+// All /api/gemini/* requests rewrite here: /api/gemini?endpoint=chatWithMentor
+// GEMINI_API_KEY is read from server-side environment only
 
 import { GoogleGenAI } from "@google/genai";
 
@@ -8,7 +8,7 @@ const MODEL = "gemini-2.5-flash";
 
 function getClient() {
   const key = process.env.GEMINI_API_KEY || "";
-  if (!key) throw new Error("GEMINI_API_KEY not configured");
+  if (!key) throw new Error("GEMINI_API_KEY is not configured");
   return new GoogleGenAI({ apiKey: key });
 }
 
@@ -24,7 +24,6 @@ async function generateContent(prompt, mimeType) {
   return resp.text || "";
 }
 
-// ── Route handlers ──
 const handlers = {
   async chatWithMentor(body) {
     const { messages, userName, context } = body;
@@ -104,7 +103,6 @@ const handlers = {
   async extractTermsFromLesson(body) { return await generateContent(`Extract 5 key terms from this lesson content`); },
 };
 
-// ── Vercel handler ──
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -114,14 +112,14 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
 
   try {
-    const { pathname } = new URL(req.url, "http://localhost");
-    const endpoint = pathname.replace(/^\/api\/gemini\/?/, "") || "chatWithMentor";
+    console.log(`[gemini] Endpoint=${req.query.endpoint}`);
+    const endpoint = req.query.endpoint || "chatWithMentor";
     const handler = handlers[endpoint];
     if (!handler) return res.status(404).json({ error: `Unknown endpoint: ${endpoint}` });
     const result = await handler(req.body);
     return res.status(200).json(result);
   } catch (err) {
-    console.error("Gemini API error:", err.message);
+    console.error("[gemini] Error:", err.message);
     return res.status(500).json({ error: err.message || "Internal error" });
   }
 }
