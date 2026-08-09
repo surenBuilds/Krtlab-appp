@@ -32,6 +32,7 @@ import { CareerCenter } from './components/CareerCenter';
 import { OrganizationDashboard } from './components/OrganizationDashboard';
 import { DeveloperPlatform } from './components/DeveloperPlatform';
 import { GrowthDashboard } from './components/GrowthDashboard';
+import { CommandCenter } from './components/CommandCenter';
 import { GoalSystem } from './components/GoalSystem';
 import { MonetizationSystem } from './components/MonetizationSystem';
 import { Leaderboard } from './features/leaderboard/Leaderboard';
@@ -42,7 +43,7 @@ import {
   Menu, X, ChevronRight, ChevronLeft, CheckCircle2, Award, Zap,
   Wallet, Briefcase, Cpu, FlaskConical, Globe, Scale, 
   Building2, Plane, Truck, Rocket, Factory, RefreshCcw, Map,
-  Mic, MicOff, Languages, LogOut, Mail, TestTube2, Gamepad2, Target,
+  Mic, MicOff, Languages, LogOut, Mail, TestTube2, Gamepad2, Target, Compass,
   Wand2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -76,7 +77,7 @@ export default function App() {
   } = useUserProfile();
   const { preGenerate } = useLessons();
   const { t, language, setLanguage } = useTranslation();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'learn' | 'flashcards' | 'paths' | 'games' | 'goals' | 'creator' | 'lab' | 'school' | 'module' | 'mentor-marketplace' | 'course-marketplace' | 'skill-graph' | 'portfolio' | 'career-center' | 'org-dashboard' | 'dev-platform' | 'monetization' | 'leaderboard' | 'growth-dashboard' | 'goals-system'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'learn' | 'flashcards' | 'paths' | 'games' | 'goals' | 'creator' | 'lab' | 'school' | 'module' | 'mentor-marketplace' | 'course-marketplace' | 'skill-graph' | 'portfolio' | 'career-center' | 'org-dashboard' | 'dev-platform' | 'monetization' | 'leaderboard' | 'growth-dashboard' | 'goals-system' | 'command-center'>('dashboard');
   const [labTopic, setLabTopic] = useState<{ field: string, topic: string } | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
@@ -445,6 +446,12 @@ export default function App() {
             icon={<Target size={16} />}
             label="Goals"
           />
+          <NavItem 
+            active={activeTab === 'command-center'} 
+            onClick={() => setActiveTab('command-center')}
+            icon={<Compass size={16} />}
+            label="Command Center"
+          />
 
           {(isAdmin || isTeacher) && (
             <>
@@ -607,6 +614,7 @@ export default function App() {
 
         <div className="p-6 lg:p-10 max-w-7xl mx-auto w-full">
           <AnimatePresence mode="wait">
+            {activeTab === 'command-center' && <CommandCenter />}
             {activeTab === 'dashboard' && (
               <motion.div
                 key="dashboard"
