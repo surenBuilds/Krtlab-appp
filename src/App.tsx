@@ -1177,6 +1177,24 @@ export default function App() {
                 <MonetizationSystem />
               </motion.div>
             )}
+
+            {activeTab === 'leaderboard' && (
+              <motion.div key="leaderboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                <Leaderboard />
+              </motion.div>
+            )}
+
+            {activeTab === 'growth-dashboard' && (
+              <motion.div key="growth-dashboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                <GrowthDashboard />
+              </motion.div>
+            )}
+
+            {activeTab === 'goals-system' && (
+              <motion.div key="goals-system" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                <GoalSystem />
+              </motion.div>
+            )}
           </AnimatePresence>
         </div>
       </main>
