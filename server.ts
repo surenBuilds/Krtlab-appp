@@ -15,6 +15,7 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(requestLogger);
 app.use("/api/gemini", geminiRoutes);
+app.use(errorHandler);
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", version: "2.0.0-growth-os", timestamp: new Date().toISOString() });
@@ -33,5 +34,3 @@ if (isProduction) {
   };
   startDevServer();
 }
-
-app.use(errorHandler);
