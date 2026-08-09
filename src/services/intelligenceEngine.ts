@@ -101,4 +101,4 @@ export interface ProgressSummary {growthScore:number;skillsAssessed:number;skill
 export function summarizeProgress(profile:GrowthProfile,_sg:SkillNode[],goals:Goal[]):ProgressSummary{
   const bl=diagnoseSkills(profile);const ag=goals.filter(g=>g.status==="active");
   return{growthScore:profile.growthScore||0,skillsAssessed:bl.filter(b=>b.evidenceCount>0).length,skillsAboveThreshold:bl.filter(b=>b.masteryScore>40).length,activeGoals:ag.length,completedGoals:goals.filter(g=>g.status==="completed").length,weeklyXp:Math.round(profile.xp/Math.max(1,(Date.now()-new Date(profile.createdAt).getTime())/(7*86400000))),nextMilestone:ag[0]?.title||null,topStrengths:bl.filter(b=>b.masteryScore>60).map(b=>b.name).slice(0,5),topWeaknesses:bl.filter(b=>b.masteryScore<30).map(b=>b.name).slice(0,5)};
-}
+}// Phase 1 Intelligence Core deployed
