@@ -587,3 +587,31 @@ export interface EnrolledCourse {
 
 // Compat: CareerItem (used by growthEngine.ts function signatures)
 export type CareerItemCompat = any; // replaced with any — the actual type is rarely used
+
+// ============================================================================
+// INTELLIGENCE EVENTS
+// ============================================================================
+
+export type IntelligenceEventType =
+  | 'GOAL_CREATED' | 'GOAL_UPDATED' | 'GOAL_COMPLETED'
+  | 'LESSON_STARTED' | 'LESSON_COMPLETED'
+  | 'QUESTION_ANSWERED' | 'QUESTION_FAILED'
+  | 'CONCEPT_LEARNED' | 'CONCEPT_MASTERED' | 'CONCEPT_FORGOTTEN'
+  | 'SKILL_IMPROVED' | 'SKILL_STALLED'
+  | 'ASSESSMENT_STARTED' | 'ASSESSMENT_COMPLETED'
+  | 'PROJECT_STARTED' | 'PROJECT_COMPLETED'
+  | 'ACHIEVEMENT_EARNED'
+  | 'LEARNING_SESSION_STARTED' | 'LEARNING_SESSION_COMPLETED';
+
+export interface IntelligenceEvent {
+  id: string;
+  learnerId: string;
+  type: IntelligenceEventType;
+  timestamp: string;
+  relatedGoal?: string;
+  relatedSkill?: string;
+  relatedConcept?: string;
+  source: string;
+  payload: Record<string, unknown>;
+  schemaVersion: number;
+}
