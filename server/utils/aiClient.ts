@@ -12,5 +12,5 @@ export function getAIClient(): GoogleGenAI {
   return aiClient;
 }
 
-export const TEXT_MODEL = "gemini-3.5-flash";
-export const TTS_MODEL = "gemini-3.1-flash-tts-preview";
+export const TEXT_MODEL = "gemini-2.5-flash";
+export const TTS_MODEL = "gemini-2.5-flash";
