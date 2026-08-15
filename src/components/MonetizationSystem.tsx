@@ -2,36 +2,36 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTranslation } from '../hooks/useTranslation';
 import { useUserProfile } from '../hooks/useUserProfile';
-import { DollarSign, ShieldCheck, HelpCircle, Activity, CreditCard, Sparkles, Building2, UserCheck, Percent } from 'lucide-react';
-import { toast } from 'sonner';
+import { DollarSign, Activity, CreditCard, Percent, Loader2 } from 'lucide-react';
+import { requestSubscriptionCheckout } from '../services/subscriptionService';
 
 export const MonetizationSystem: React.FC = () => {
   const { t } = useTranslation();
-  const { profile, updateProfile } = useUserProfile();
-  const [activePlan, setActivePlan] = useState<'free' | 'premium' | 'enterprise'>(
+  const { profile } = useUserProfile();
+  const [activePlan] = useState<'free' | 'premium' | 'enterprise'>(
     profile?.isDemoMode ? 'premium' : 'free'
   );
   const [isOpen, setIsOpen] = useState(false);
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCvc, setCardCvc] = useState('');
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
 
-  const handleCheckout = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!cardNumber || !cardExpiry || !cardCvc) {
-      toast.error('Լրացրեք քարտի բոլոր տվյալները:');
-      return;
+  // Never activates a plan locally. Real activation only happens server-side
+  // after a real payment webhook fires (see server.ts /api/subscriptions/checkout).
+  const handleCheckout = async () => {
+    setIsCheckingOut(true);
+    setCheckoutMessage(null);
+    try {
+      const result = await requestSubscriptionCheckout('premium');
+      if (result.paymentAvailable && result.checkoutUrl) {
+        window.location.href = result.checkoutUrl;
+        return;
+      }
+      setCheckoutMessage(result.message || 'Վճարային համակարգը դեռ միացված չէ։ Premium-ը դեռ հասանելի չէ գնման համար։');
+    } catch (err: any) {
+      setCheckoutMessage(err.message);
+    } finally {
+      setIsCheckingOut(false);
     }
-
-    setActivePlan('premium');
-    updateProfile({ isDemoMode: true }); // Mocking premium state using isDemoMode flag
-    setIsOpen(false);
-    setCardNumber('');
-    setCardExpiry('');
-    setCardCvc('');
-    toast.success('Շնորհավորում ենք: Ձեր KrtLab Premium բաժանորդագրությունը հաջողությամբ ակտիվացավ:', {
-      icon: <Sparkles className="text-secondary" />
-    });
   };
 
   return (
@@ -92,7 +92,7 @@ export const MonetizationSystem: React.FC = () => {
               {t('monetization.premiumPlan')}
             </span>
             <div className="flex items-baseline gap-1">
-              <span className="text-4xl font-black text-white">$15</span>
+              <span className="text-4xl font-black text-white">9,900 ֏</span>
               <span className="text-slate-400 font-bold text-xs">/ ամիս</span>
             </div>
             <p className="text-slate-400 text-xs font-medium leading-relaxed">
@@ -159,11 +159,12 @@ export const MonetizationSystem: React.FC = () => {
           <div className="grid grid-cols-2 gap-4 text-center">
             <div className="bg-slate-50 p-3 rounded-2xl">
               <span className="block text-[8px] text-slate-400 font-bold uppercase">{t('monetization.commissionRate')}</span>
-              <span className="text-lg font-black text-slate-900">70% / 30%</span>
+              <span className="text-lg font-black text-slate-900">80% / 20%</span>
             </div>
             <div className="bg-slate-50 p-3 rounded-2xl">
               <span className="block text-[8px] text-slate-400 font-bold uppercase">Բալանս</span>
-              <span className="text-lg font-black text-emerald-600">$340.50</span>
+              <span className="text-lg font-black text-slate-400">$0.00</span>
+              <span className="block text-[7px] text-slate-400 font-medium mt-0.5">Իրական payout tracking դեռ չկա</span>
             </div>
           </div>
         </div>
@@ -184,7 +185,7 @@ export const MonetizationSystem: React.FC = () => {
         </div>
       </div>
 
-      {/* Checkout Drawer / Modal */}
+      {/* Checkout Modal — honest: no card fields, no fake activation */}
       <AnimatePresence>
         {isOpen && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -197,7 +198,7 @@ export const MonetizationSystem: React.FC = () => {
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <h3 className="text-xl font-black text-slate-900">KrtLab Checkout</h3>
-                  <p className="text-slate-500 text-xs font-medium">Անվտանգ վճարում Stripe-ով</p>
+                  <p className="text-slate-500 text-xs font-medium">KrtLab Premium բաժանորդագրություն</p>
                 </div>
                 <button
                   onClick={() => setIsOpen(false)}
@@ -207,48 +208,19 @@ export const MonetizationSystem: React.FC = () => {
                 </button>
               </div>
 
-              <form onSubmit={handleCheckout} className="space-y-4">
-                <div>
-                  <label className="text-[10px] text-slate-400 font-black uppercase">Card Number (Քարտի Համար)</label>
-                  <div className="relative mt-1">
-                    <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                    <input
-                      type="text"
-                      required
-                      value={cardNumber}
-                      onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, '').slice(0, 16))}
-                      placeholder="4000 1234 5678 9010"
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary outline-none text-xs font-medium"
-                    />
-                  </div>
+              <div className="space-y-4">
+                <div className="bg-slate-50 rounded-2xl border border-slate-100 p-5 text-center">
+                  <p className="text-3xl font-black text-slate-900">9,900 ֏</p>
+                  <p className="text-xs text-slate-500 font-medium mt-1">/ ամսական, KrtLab Premium</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[10px] text-slate-400 font-black uppercase">Expiry (Ժամկետ)</label>
-                    <input
-                      type="text"
-                      required
-                      value={cardExpiry}
-                      onChange={(e) => setCardExpiry(e.target.value.slice(0, 5))}
-                      placeholder="MM/YY"
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary outline-none text-xs font-medium mt-1"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-slate-400 font-black uppercase">CVC / CVV</label>
-                    <input
-                      type="password"
-                      required
-                      value={cardCvc}
-                      onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, '').slice(0, 3))}
-                      placeholder="•••"
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-primary outline-none text-xs font-medium mt-1"
-                    />
-                  </div>
-                </div>
+                {checkoutMessage && (
+                  <p className="text-xs text-amber-600 font-bold bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                    {checkoutMessage}
+                  </p>
+                )}
 
-                <div className="flex gap-3 pt-4">
+                <div className="flex gap-3 pt-2">
                   <button
                     type="button"
                     onClick={() => setIsOpen(false)}
@@ -257,13 +229,16 @@ export const MonetizationSystem: React.FC = () => {
                     {t('common.cancel')}
                   </button>
                   <button
-                    type="submit"
-                    className="flex-1 px-4 py-3 bg-primary text-white rounded-xl font-bold text-xs shadow-md"
+                    type="button"
+                    onClick={handleCheckout}
+                    disabled={isCheckingOut}
+                    className="flex-1 px-4 py-3 bg-primary text-white rounded-xl font-bold text-xs shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
                   >
-                    Վճարել $15.00
+                    {isCheckingOut ? <Loader2 className="animate-spin" size={14} /> : <CreditCard size={14} />}
+                    Անցնել Վճարման
                   </button>
                 </div>
-              </form>
+              </div>
             </motion.div>
           </div>
         )}

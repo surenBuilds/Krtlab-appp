@@ -462,6 +462,18 @@ export interface OrganizationMember {
   joinedAt: string;
 }
 
+// ---------------- Subscriptions (section 21 — Premium Features) ----------------
+
+export type SubscriptionPlan = 'free' | 'premium' | 'enterprise';
+
+export interface Subscription {
+  uid: string;
+  plan: SubscriptionPlan;
+  status: 'pending_payment' | 'active' | 'cancelled';
+  startedAt: string | null;
+  paymentId?: string;
+}
+
 // ---------------- Analytics (section 23) ----------------
 
 export type AnalyticsEventName =

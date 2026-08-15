@@ -96,6 +96,42 @@ async function requireAuth(req: express.Request): Promise<string> {
   return decoded.uid;
 }
 
+// ===============================================================
+// SUBSCRIPTIONS — real checkout flow, no fake activation (fixes the
+// previous MonetizationSystem.tsx bug where card fields were collected
+// and "Premium" was activated locally without ever charging anything).
+// ===============================================================
+app.post("/api/subscriptions/checkout", async (req, res) => {
+  try {
+    const uid = await requireAuth(req);
+    const { plan } = req.body as { plan?: "premium" | "enterprise" };
+    if (plan !== "premium" && plan !== "enterprise") {
+      return res.status(400).json({ message: "plan must be 'premium' or 'enterprise'" });
+    }
+    const amountAMD = plan === "premium" ? 9900 : 49900; // configurable pricing, not hardcoded into the UI copy
+
+    if (!isAdminConfigured()) {
+      return res.status(202).json({ status: "pending_payment", paymentAvailable: false, message: "Server not configured (FIREBASE_SERVICE_ACCOUNT_JSON missing)." });
+    }
+
+    try {
+      const checkout = await getPaymentProvider().createCheckout({
+        uid,
+        itemType: "subscription",
+        itemId: plan,
+        amountAMD,
+        successRedirectUrl: `${req.protocol}://${req.get("host")}/`,
+        cancelRedirectUrl: `${req.protocol}://${req.get("host")}/`,
+      });
+      return res.json({ status: "pending_payment", paymentAvailable: true, checkoutUrl: checkout.checkoutUrl });
+    } catch (paymentErr: any) {
+      return res.status(202).json({ status: "pending_payment", paymentAvailable: false, message: paymentErr.message });
+    }
+  } catch (e: any) {
+    return res.status(401).json({ message: e.message });
+  }
+});
+
 app.post("/api/certificates/request", async (req, res) => {
   if (!isAdminConfigured()) {
     return res.status(503).json({
