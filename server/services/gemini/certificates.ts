@@ -1,5 +1,7 @@
 import { getAIClient, TEXT_MODEL } from "../../utils/aiClient";
-import { withRetry, safeParseJSON } from "../../utils/helpers";
+import { withRetry } from "../../utils/helpers";
+import { validateAIResponse } from "../../utils/validateAIResponse";
+import { ExtractTermsResponseSchema } from "../../schemas/aiResponses";
 const ai = () => getAIClient();
 
 export async function generateCertificateOutcomes(courseName: string, levelName: string): Promise<string> {
@@ -9,5 +11,11 @@ export async function generateCertificateOutcomes(courseName: string, levelName:
 
 export async function extractTermsFromLesson(lessonContent: string) {
   const r = await withRetry(() => ai().models.generateContent({ model: TEXT_MODEL, contents: `Extract 8-12 key terms from: ${lessonContent.slice(0,5000)}. JSON: {terms:[{term,definition,category,difficulty}]}. Armenian. ONLY JSON.`, config: { responseMimeType: "application/json" } }));
-  return safeParseJSON(r.text||"{}", { terms: [] });
+  const fallback = { terms: [] };
+  const result = validateAIResponse(r.text, ExtractTermsResponseSchema);
+  if (!result.success) {
+    console.warn(`[extractTermsFromLesson] ${result.errorType}: ${result.message}`);
+    return fallback;
+  }
+  return result.data;
 }

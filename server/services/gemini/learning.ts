@@ -3,7 +3,10 @@
  */
 import { getAIClient, TEXT_MODEL, TTS_MODEL } from "../../utils/aiClient";
 import { withRetry, safeParseJSON } from "../../utils/helpers";
+import { validateAIResponse, AIValidationResult } from "../../utils/validateAIResponse";
+import { LessonContentSchema, AnalyzeProgressSchema } from "../../schemas/aiResponses";
 import { Modality } from "@google/genai";
+import { z } from "zod";
 
 const ai = () => getAIClient();
 
@@ -31,15 +34,51 @@ export async function askTutorQuestion(lessonText: string, question: string, his
 
 export async function analyzeProgress(params: { lessonId: string; quizScore: number; mistakes: string[]; questionsAsked: number }) {
   const response = await withRetry(() => ai().models.generateContent({ model: TEXT_MODEL, contents: `Վերլուծիր: Դաս ${params.lessonId}, Թեստ ${params.quizScore}%, Սխալներ ${params.mistakes.join(",")}, Հարցեր ${params.questionsAsked}. JSON: {level,weakPoints:[],recommendation,nextLessonType}. ՄԻԱՅՆ JSON:`, config: { responseMimeType: "application/json" } }));
-  return safeParseJSON(response.text || "{}", { level: "medium", weakPoints: [], recommendation: "Շարունակեք:", nextLessonType: "same" });
+  const fallback = { level: "medium", weakPoints: [], recommendation: "Շարունակեք:", nextLessonType: "same" };
+  const result = validateAIResponse(response.text, AnalyzeProgressSchema);
+  if (!result.success) {
+    console.warn(`[analyzeProgress] ${result.errorType}: ${result.message}`);
+    return fallback;
+  }
+  return result.data;
 }
 
-export async function generateLessonContent(params: any): Promise<any> {
+/** Documentation/reference shape only — see the no-explicit-annotation note on
+ * validateAIResponse() in server/utils/validateAIResponse.ts for why. */
+export type GenerateLessonContentResult =
+  | { success: true; data: z.infer<typeof LessonContentSchema> }
+  | { success: false; errorType: "AI_VALIDATION_ERROR"; message: string; issues: z.ZodIssue[] };
+
+export async function generateLessonContent(params: any) {
   const { category, subfield, level, literature, previousLessons, currentTopic, topicIndex } = params;
   const sources = getSourceMap()[subfield] || "Academic standards";
   const prompt = `You are the KrtLab Learning Engine. Generate Level #${level} of a 20-level course. Category: ${category}, Subfield: ${subfield}. Sources: ${sources}. ${currentTopic ? `Topic: "${currentTopic}"` : ""}. Return JSON with: title, topicId, topicName, orderIndex, introduction, keyConcepts[], detailedExplanation, examples[], exercises[], miniSummary, recommendedReading[], quiz[{question,options[],correctAnswer,explanation}], practicalTask:{title,scenario,instructions,deliverable,evaluationCriteria}, game:{title,scenario,player_role,steps[]}, completion:{message,total_xp}, requiredScore. All in Armenian. ONLY JSON.`;
   const response = await withRetry(() => ai().models.generateContent({ model: TEXT_MODEL, contents: prompt, config: { responseMimeType: "application/json" } }));
-  try { return JSON.parse(response.text || "{}"); } catch { return getFallbackLesson(category, subfield, level, currentTopic, topicIndex); }
+
+  const result = validateAIResponse(response.text, LessonContentSchema);
+
+  if (result.success) {
+    return { success: true as const, data: result.data };
+  }
+
+  if (result.errorType === "AI_GENERATION_ERROR") {
+    // Malformed JSON entirely — preserve the existing fallback-lesson behavior,
+    // but validate the fallback itself before trusting it (defense in depth).
+    const fallback = getFallbackLesson(category, subfield, level, currentTopic, topicIndex);
+    const fallbackResult = validateAIResponse(JSON.stringify(fallback), LessonContentSchema);
+    if (fallbackResult.success) {
+      console.warn(`[generateLessonContent] AI_GENERATION_ERROR (invalid JSON) — using fallback lesson. ${result.message}`);
+      return { success: true as const, data: fallbackResult.data };
+    }
+    // Even the fallback doesn't validate — this should never happen, but don't lie about success.
+    console.error("[generateLessonContent] Fallback lesson itself failed schema validation:", fallbackResult);
+    return { success: false as const, errorType: "AI_VALIDATION_ERROR" as const, message: "AI response was malformed and the fallback lesson also failed validation.", issues: fallbackResult.issues };
+  }
+
+  // Valid JSON, but it doesn't match the expected lesson schema — do NOT silently
+  // accept structurally invalid data. Surface a controlled error to the route.
+  console.error(`[generateLessonContent] AI_VALIDATION_ERROR: ${result.message}`, result.issues);
+  return { success: false as const, errorType: "AI_VALIDATION_ERROR" as const, message: result.message, issues: result.issues };
 }
 
 function getSourceMap(): Record<string, string> {
