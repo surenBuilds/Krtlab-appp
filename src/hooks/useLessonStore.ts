@@ -260,7 +260,7 @@ export const useLessonStore = () => {
   const [lessons, setLessons] = useState<Record<string, LessonState>>({});
   const lessonsRef = useRef(lessons);
   lessonsRef.current = lessons;
-  const loadingRef = useRef<Record<string, boolean>>({});
+  const loadingRef = useRef<Record<string, number>>({});
 
   const fetchLesson = useCallback(async (
     categoryId: string, 
@@ -280,9 +280,11 @@ export const useLessonStore = () => {
       return lessonsRef.current[lessonId];
     }
 
-    // Prevent duplicate API calls
-    if (loadingRef.current[lessonId] && !forceRefresh) return;
-    loadingRef.current[lessonId] = true;
+    // Prevent duplicate API calls — but a lock older than 65s is treated as stale
+    // (an earlier attempt that never cleared itself) so we never block forever.
+    const lockAge = Date.now() - (loadingRef.current[lessonId] || 0);
+    if (loadingRef.current[lessonId] && lockAge < 65000 && !forceRefresh) return;
+    loadingRef.current[lessonId] = Date.now();
 
     setLessons(prev => ({
       ...prev,
@@ -305,7 +307,7 @@ export const useLessonStore = () => {
           error: null
         };
         setLessons(prev => ({ ...prev, [lessonId]: demoLesson }));
-        loadingRef.current[lessonId] = false;
+        delete loadingRef.current[lessonId];
         return demoLesson;
       }
 
@@ -323,7 +325,7 @@ export const useLessonStore = () => {
             error: null
           };
           setLessons(prev => ({ ...prev, [lessonId]: state }));
-          loadingRef.current[lessonId] = false;
+          delete loadingRef.current[lessonId];
           return state;
         } catch (e) {
           localStorage.removeItem(lessonId);
@@ -331,10 +333,15 @@ export const useLessonStore = () => {
       }
 
       // 4. Check Firestore (Production Persistence)
+      // Bounded with its own timeout — a stuck/misconfigured Firestore call must
+      // never block the whole pipeline from ever reaching AI generation below.
       if (auth.currentUser && !forceRefresh) {
         const docRef = doc(db, 'lessons', lessonId);
         try {
-          const docSnap = await getDoc(docRef);
+          const firestoreTimeout = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("FIRESTORE_TIMEOUT")), 8000)
+          );
+          const docSnap = await Promise.race([getDoc(docRef), firestoreTimeout]);
           if (docSnap.exists()) {
             const data = docSnap.data() as Lesson;
             localStorage.setItem(lessonId, JSON.stringify(data));
@@ -347,7 +354,7 @@ export const useLessonStore = () => {
               error: null
             };
             setLessons(prev => ({ ...prev, [lessonId]: state }));
-            loadingRef.current[lessonId] = false;
+            delete loadingRef.current[lessonId];
             return state;
           }
         } catch (error) {
@@ -406,7 +413,7 @@ export const useLessonStore = () => {
       };
 
       setLessons(prev => ({ ...prev, [lessonId]: finalState }));
-      loadingRef.current[lessonId] = false;
+      delete loadingRef.current[lessonId];
       return finalState;
 
     } catch (err: any) {
@@ -422,7 +429,7 @@ export const useLessonStore = () => {
         error: err.message === "TIMEOUT" ? "Դասի ստեղծումը տևում է սովորականից երկար: Խնդրում ենք փորձել մի փոքր ուշ:" : "Դասը ժամանակավորապես հասանելի չէ:"
       };
       setLessons(prev => ({ ...prev, [lessonId]: fallbackState }));
-      loadingRef.current[lessonId] = false;
+      delete loadingRef.current[lessonId];
       return fallbackState;
     }
   }, []);
