@@ -82,6 +82,7 @@ export const LearningModule: React.FC<LearningModuleProps> = ({
   
   const [step, setStep] = useState<'theory' | 'lab' | 'quiz' | 'task' | 'practice' | 'result' | 'completed'>('theory');
   const [quizScore, setQuizScore] = useState<number>(0);
+  const [quizMistakes, setQuizMistakes] = useState<string[]>([]);
   const [totalXpEarned, setTotalXpEarned] = useState(0);
   const [masteryScore, setMasteryScore] = useState(0);
   const [quizAnswers, setQuizAnswers] = useState<number[]>([]);
@@ -284,39 +285,12 @@ export const LearningModule: React.FC<LearningModuleProps> = ({
     const mistakes = questionsToUse
       .filter((q, i) => safeAnswers[i] !== q.correctAnswer)
       .map(q => q.question);
+    setQuizMistakes(mistakes);
 
     const result = await analyzeProgress(`${subfieldId}_${levelId}`, score, mistakes, questionsAsked);
     if (result) {
       setAnalysis(result);
       updateAdaptiveProgress(`${subfieldId}_${levelId}`, result);
-    }
-
-    // Generate progression feedback
-    if (profile) {
-      try {
-        const prog = await generateProgressionFeedback({
-          userId: profile.name,
-          userName: profile.name,
-          lessonId: `${subfieldId}_${levelId}`,
-          lessonCompleted: score >= (level.requiredScore || 80),
-          quizScore: score,
-          timeSpent: "5:00",
-          mistakes: mistakes,
-          currentLevel: levelId,
-          maxLevel: 20
-        });
-        setProgression(prog);
-        
-        // Try to auto-play feedback audio
-        if (prog.audioUrl) {
-          const audio = new Audio(prog.audioUrl);
-          audio.play().catch(e => {
-            console.warn("Autoplay blocked or failed:", e);
-          });
-        }
-      } catch (e) {
-        console.error("Failed to generate progression feedback:", e);
-      }
     }
 
     // Optimization Engine Trigger
@@ -381,15 +355,44 @@ export const LearningModule: React.FC<LearningModuleProps> = ({
       updateProgress(categoryId, subfieldId, levelId, 100, 'game');
       
       setPracticeSubmission(true);
-      setIsPracticeSubmitting(false);
       setTotalXpEarned(prev => prev + earnedXp);
       updateXp(earnedXp);
       
       // Calculate Mastery Score (Average of Quiz and Practice)
-      const mastery = Math.round((quizScore + 100) / 2);
+      const practiceScore = 100;
+      const mastery = Math.round((quizScore + practiceScore) / 2);
       setMasteryScore(mastery);
 
       toast.success(`Գործնական սցենարն ավարտված է! +${earnedXp} XP`);
+
+      // NOW that both quiz + practice are done, ask the AI Mentor to summarize
+      // the full performance and decide: advance to next level, or repeat this one.
+      if (profile) {
+        try {
+          const prog = await generateProgressionFeedback({
+            userId: profile.name,
+            userName: profile.name,
+            lessonId: `${subfieldId}_${levelId}`,
+            lessonCompleted: mastery >= (level?.requiredScore || 80),
+            quizScore,
+            practiceScore,
+            timeSpent: "5:00",
+            mistakes: quizMistakes,
+            currentLevel: levelId,
+            maxLevel: 20,
+            topic: level?.title || subfieldTitle,
+          });
+          setProgression(prog);
+          if (prog?.audioUrl) {
+            const audio = new Audio(prog.audioUrl);
+            audio.play().catch(e => console.warn("Autoplay blocked or failed:", e));
+          }
+        } catch (e) {
+          console.error("Failed to generate progression feedback:", e);
+        }
+      }
+
+      setIsPracticeSubmitting(false);
 
       // Transition to lesson completed view
       setStep('completed');
@@ -1062,37 +1065,6 @@ export const LearningModule: React.FC<LearningModuleProps> = ({
                   ) }
                 </div>
 
-                {progression && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={cn(
-                      "p-10 rounded-[3rem] border-2 text-left space-y-8 shadow-2xl max-w-2xl mx-auto",
-                      progression.status === 'level-up' ? "bg-emerald-50 border-emerald-100 text-emerald-900 shadow-emerald-200/50" :
-                      progression.status === 'same-level' ? "bg-accent/5 border-accent/10 text-accent shadow-accent/10" :
-                      "bg-amber-50 border-amber-100 text-amber-900 shadow-amber-200/50"
-                    )}
-                  >
-                    <div className="flex items-center gap-5">
-                      <div className={cn(
-                        "w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm",
-                        progression.status === 'level-up' ? "bg-emerald-200" :
-                        progression.status === 'same-level' ? "bg-accent/20" : "bg-amber-200"
-                      )}>
-                        {progression.status === 'level-up' ? <Award size={28} /> : 
-                         progression.status === 'same-level' ? <TrendingUp size={28} /> : <RefreshCw size={28} />}
-                      </div>
-                      <h3 className="font-black text-2xl tracking-tight">
-                        {progression.status === 'level-up' ? 'Մակարդակի բարձրացում!' : 
-                         progression.status === 'same-level' ? 'Լավ առաջընթաց' : 'Կրկնություն'}
-                      </h3>
-                    </div>
-                    <p className="text-2xl leading-relaxed italic font-medium">
-                      "{progression.messageText}"
-                    </p>
-                  </motion.div>
-                )}
-
                 {analysis && (
                   <motion.div 
                     initial={{ opacity: 0, y: 20 }}
@@ -1190,14 +1162,34 @@ export const LearningModule: React.FC<LearningModuleProps> = ({
                 </div>
               </div>
 
-              <div className="max-w-2xl mx-auto p-10 bg-slate-50 rounded-[3rem] border-2 border-slate-100 relative overflow-hidden group">
+              <div className={cn(
+                "max-w-2xl mx-auto p-10 rounded-[3rem] border-2 relative overflow-hidden group text-left space-y-6",
+                !progression ? "bg-slate-50 border-slate-100" :
+                progression.status === 'level-up' ? "bg-emerald-50 border-emerald-100" : "bg-accent/5 border-accent/10"
+              )}>
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 via-primary to-accent" />
-                <p className="text-2xl text-slate-700 font-medium leading-relaxed italic relative z-10">
-                  {masteryScore >= 90 
+                {progression && (
+                  <div className="flex items-center gap-4">
+                    <div className={cn(
+                      "w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm",
+                      progression.status === 'level-up' ? "bg-emerald-200" : "bg-accent/20"
+                    )}>
+                      {progression.status === 'level-up' ? <Award size={24} /> : <RefreshCw size={24} />}
+                    </div>
+                    <h3 className="font-black text-xl tracking-tight text-slate-900">
+                      {progression.status === 'level-up' ? 'ԱԲ մենթորի որոշում. Հաջորդ մակարդակ' : 'ԱԲ մենթորի որոշում. Կրկնել այս մակարդակը'}
+                    </h3>
+                  </div>
+                )}
+                <p className="text-xl text-slate-700 font-medium leading-relaxed italic relative z-10">
+                  {progression?.messageText || (
+                    analyzing ? "ԱԲ մենթորը ամփոփում է ձեր արդյունքները..." :
+                    masteryScore >= 90 
                     ? "Դուք ցուցադրեցիք փայլուն արդյունքներ: Թեման ամբողջությամբ յուրացված է, և դուք պատրաստ եք հաջորդ մարտահրավերին:" 
                     : masteryScore >= 75 
                     ? "Լավ աշխատանք: Դուք ունեք ամուր գիտելիքներ այս թեմայից: Շարունակեք նույն ոգով:" 
-                    : "Դուք հանձնեցիք դասը, սակայն որոշ հասկացություններ կարող են լրացուցիչ կրկնություն պահանջել: Պատրաստվե՛ք հաջորդ դասին:"}
+                    : "Դուք հանձնեցիք դասը, սակայն որոշ հասկացություններ կարող են լրացուցիչ կրկնություն պահանջել: Պատրաստվե՛ք հաջորդ դասին:"
+                  )}
                 </p>
               </div>
             </div>
@@ -1210,23 +1202,33 @@ export const LearningModule: React.FC<LearningModuleProps> = ({
                 <RotateCcw size={28} />
                 Կրկնել
               </button>
-              <button
-                onClick={handleNextLesson}
-                disabled={isFinishing}
-                className="flex-[2] bg-slate-900 text-white p-6 rounded-3xl font-black text-2xl flex items-center justify-center gap-4 hover:scale-[1.02] transition-all shadow-[8px_8px_0px_0px_#0ea5e9] glow-cyan-hover group disabled:opacity-70 disabled:cursor-wait"
-              >
-                {isFinishing ? (
-                  <>
-                    <Loader2 size={32} className="animate-spin" />
-                    <span>Պահպանվում է...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Ավարտել Դասը</span>
-                    <ChevronRight size={32} className="group-hover:translate-x-2 transition-transform" />
-                  </>
-                )}
-              </button>
+              {progression?.status === 'same-level' ? (
+                <button
+                  onClick={handleRetry}
+                  className="flex-[2] bg-accent text-white p-6 rounded-3xl font-black text-2xl flex items-center justify-center gap-4 hover:scale-[1.02] transition-all shadow-[8px_8px_0px_0px_rgba(15,23,42,0.3)] group"
+                >
+                  <RefreshCw size={32} />
+                  <span>Կրկնել այս մակարդակը</span>
+                </button>
+              ) : (
+                <button
+                  onClick={handleNextLesson}
+                  disabled={isFinishing}
+                  className="flex-[2] bg-slate-900 text-white p-6 rounded-3xl font-black text-2xl flex items-center justify-center gap-4 hover:scale-[1.02] transition-all shadow-[8px_8px_0px_0px_#0ea5e9] glow-cyan-hover group disabled:opacity-70 disabled:cursor-wait"
+                >
+                  {isFinishing ? (
+                    <>
+                      <Loader2 size={32} className="animate-spin" />
+                      <span>Պահպանվում է...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Հաջորդ մակարդակ</span>
+                      <ChevronRight size={32} className="group-hover:translate-x-2 transition-transform" />
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </motion.div>
         )}

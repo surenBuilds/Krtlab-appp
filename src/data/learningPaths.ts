@@ -710,3 +710,17 @@ export const getPersonalizedPaths = (goal: string, difficulty: Difficulty) => {
 
 // For backward compatibility or single list needs
 export const LEARNING_PATHS = CATEGORIZED_LEARNING_PATHS.flatMap(cat => cat.paths);
+
+// Compact, AI-safe catalog: only real ids/titles the model is allowed to choose from.
+// Used to ground goal-matching so the AI can never invent a path/category that doesn't exist.
+export const getPathCatalog = () =>
+  CATEGORIZED_LEARNING_PATHS.flatMap(cat =>
+    cat.paths.map(p => ({
+      categoryId: cat.id,
+      categoryTitle: cat.title,
+      pathId: p.id,
+      pathTitle: p.title,
+      description: p.description,
+      difficulty: p.difficulty,
+    }))
+  );

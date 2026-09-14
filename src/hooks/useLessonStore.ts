@@ -363,7 +363,7 @@ export const useLessonStore = () => {
 
       // 120-second timeout for complex generation
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("TIMEOUT")), 120000)
+        setTimeout(() => reject(new Error("TIMEOUT")), 60000)
       );
 
       const fetchWithRetry = async (retries = 2): Promise<Lesson> => {

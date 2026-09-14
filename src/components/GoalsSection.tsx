@@ -15,7 +15,8 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useUserProfile } from '../hooks/useUserProfile';
-import { CATEGORIZED_LEARNING_PATHS, LearningPath } from '../data/learningPaths';
+import { CATEGORIZED_LEARNING_PATHS, LearningPath, getPathCatalog } from '../data/learningPaths';
+import { analyzeGoalText } from '../services/geminiService';
 import { toast } from 'sonner';
 
 const KEYWORD_MAP = [
@@ -36,6 +37,8 @@ export const GoalsSection = () => {
   const [matchedCategoryId, setMatchedCategoryId] = useState<string | null>(null);
   const [matchedCategoryTitle, setMatchedCategoryTitle] = useState<string | null>(null);
   const [showResults, setShowResults] = useState(false);
+  const [aiRationale, setAiRationale] = useState<string>('');
+  const [aiGapNote, setAiGapNote] = useState<string>('');
 
   useEffect(() => {
     if (profile?.customGoal && !showResults) {
@@ -43,7 +46,30 @@ export const GoalsSection = () => {
     }
   }, [profile?.customGoal, showResults]);
 
-  const analyzeGoal = () => {
+  // Local keyword matching — used only as a safety-net fallback if the AI
+  // call fails or times out, so the person is never left stuck with no result.
+  const keywordMatch = (text: string) => {
+    const lowerText = text.toLowerCase();
+    let bestMatch = { id: 'business', score: 0 };
+    KEYWORD_MAP.forEach(item => {
+      let score = 0;
+      item.keywords.forEach(kw => { if (lowerText.includes(kw.toLowerCase())) score++; });
+      if (score > bestMatch.score) bestMatch = { id: item.id, score };
+    });
+    return bestMatch.id;
+  };
+
+  const applyMatch = (categoryId: string, topPathIds: string[] = []) => {
+    const category = CATEGORIZED_LEARNING_PATHS.find(c => c.id === categoryId) || CATEGORIZED_LEARNING_PATHS[0];
+    setMatchedCategoryId(category.id);
+    setMatchedCategoryTitle(category.title);
+    const chosen = topPathIds.length
+      ? topPathIds.map(id => category.paths.find(p => p.id === id)).filter(Boolean) as LearningPath[]
+      : category.paths.slice(0, 3);
+    setRecommendations(chosen.length ? chosen : category.paths.slice(0, 3));
+  };
+
+  const analyzeGoal = async () => {
     if (!goalText.trim()) {
       toast.error('Խնդրում ենք մուտքագրել ձեր նպատակը:');
       return;
@@ -51,35 +77,29 @@ export const GoalsSection = () => {
 
     setIsAnalyzing(true);
     setShowResults(false);
+    setAiGapNote('');
 
-    // Keyword matching logic
-    const lowerText = goalText.toLowerCase();
-    let bestMatch = { id: 'business', score: 0 };
-
-    KEYWORD_MAP.forEach(item => {
-      let score = 0;
-      item.keywords.forEach(kw => {
-        if (lowerText.includes(kw.toLowerCase())) score++;
-      });
-      if (score > bestMatch.score) {
-        bestMatch = { id: item.id, score };
+    try {
+      const result = await analyzeGoalText(goalText, getPathCatalog());
+      if (result && !result.fallback && result.categoryId) {
+        applyMatch(result.categoryId, result.topPathIds);
+        setAiRationale(result.rationale || '');
+        setAiGapNote(result.gapNote || '');
+      } else {
+        // AI unavailable or hallucinated — fall back to local keyword matching.
+        applyMatch(keywordMatch(goalText));
+        setAiRationale('');
       }
-    });
-
-    // Simulate analysis time
-    setTimeout(() => {
-      const category = CATEGORIZED_LEARNING_PATHS.find(c => c.id === bestMatch.id) || CATEGORIZED_LEARNING_PATHS[0];
-      setMatchedCategoryId(category.id);
-      setMatchedCategoryTitle(category.title);
-      setRecommendations(category.paths.slice(0, 3));
+    } catch (e) {
+      console.error('Goal analysis failed, using local fallback:', e);
+      applyMatch(keywordMatch(goalText));
+      setAiRationale('');
+    } finally {
       setIsAnalyzing(false);
       setShowResults(true);
-      
-      // Save global goal
       updateCustomGoal(goalText);
-      
       toast.success('Նպատակի վերլուծությունն ավարտվեց:');
-    }, 1500);
+    }
   };
 
   const handleActivate = () => {
@@ -237,21 +257,28 @@ export const GoalsSection = () => {
                   </div>
                   <div className="flex items-center gap-3 relative z-10">
                     <Sparkles className="text-accent" />
-                    <h3 className="text-xl font-black tracking-tight">Բարելավված տարբերակը</h3>
+                    <h3 className="text-xl font-black tracking-tight">
+                      {aiRationale ? 'ԱԲ մենթորի բացատրությունը' : 'Բարելավված տարբերակը'}
+                    </h3>
                   </div>
                   <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/20 italic font-medium relative z-10">
-                    "{refinedGoal()}"
+                    "{aiRationale || refinedGoal()}"
                   </div>
-                  <button 
-                    onClick={() => {
-                      setGoalText(refinedGoal());
-                      updateCustomGoal(refinedGoal());
-                      toast.success('Նպատակը թարմացվեց բարելավված տարբերակով:');
-                    }}
-                    className="bg-white text-primary px-8 py-3 rounded-xl font-black text-sm hover:bg-slate-50 transition-colors relative z-10 shadow-lg"
-                  >
-                    Օգտագործել այս տարբերակը
-                  </button>
+                  {aiGapNote && (
+                    <p className="text-white/80 text-sm font-medium relative z-10">{aiGapNote}</p>
+                  )}
+                  {!aiRationale && (
+                    <button 
+                      onClick={() => {
+                        setGoalText(refinedGoal());
+                        updateCustomGoal(refinedGoal());
+                        toast.success('Նպատակը թարմացվեց բարելավված տարբերակով:');
+                      }}
+                      className="bg-white text-primary px-8 py-3 rounded-xl font-black text-sm hover:bg-slate-50 transition-colors relative z-10 shadow-lg"
+                    >
+                      Օգտագործել այս տարբերակը
+                    </button>
+                  )}
                 </div>
               </motion.div>
             )}
