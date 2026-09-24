@@ -6,6 +6,7 @@ import { useUserProfile } from "./useUserProfile";
 import { onLessonCompleted, onProjectCompleted, onGoalProgress, calculateGrowthScore, buildMentorContext } from "../services/growthEngine";
 import type { GrowthProfile, Goal, UserSkill, LearningProgressRecord, Project, MentorContext } from "../types/learner";
 
+// Growth profile audit
 export function useGrowthProfile() {
   const userProfile = useUserProfile();
   const { profile, updateProfile } = userProfile;
