@@ -1,3 +1,4 @@
+import { LEARNING_SOURCE_CATALOG, getLearningSources } from "../../../src/data/learningSources";
 /**
  * Gemini Learning Service
  */
@@ -39,7 +40,7 @@ export async function generateLessonContent(params: any): Promise<any> {
     category, subfield, level, literature, previousLessons = [], currentTopic, topicIndex, curriculum = []
   } = params;
 
-  const sources = getSourceMap()[subfield] || "Use the supplied recommended literature and established academic/industry standards.";
+  const sources = getLearningSources(category, subfield);
   const phase = level <= 4 ? "Foundation" : level <= 8 ? "Core concepts" : level <= 12 ? "Applied practice" : level <= 16 ? "Advanced application" : "Integration and capstone";
   const curriculumText = curriculum.length ? curriculum.map((t: string, i: number) => `${i + 1}. ${t}`).join("\n") : currentTopic || subfield;
   const previousText = previousLessons.slice(-4).map((x: string, i: number) => `${i + 1}. ${x}`).join("\n");
