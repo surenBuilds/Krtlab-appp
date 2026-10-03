@@ -23,7 +23,7 @@ interface ProjectItem {
 
 export const PersonalLearningProfile: React.FC = () => {
   const { t } = useTranslation();
-  const { profile } = useUserProfile();
+  const { profile, recordProject } = useUserProfile();
 
   const [experiences, setExperiences] = useState<ExperienceItem[]>([
     { id: 'exp1', role: 'AI Frontend Engineer', company: 'Self-Employed (KrtLab ecosystem)', duration: '2025 - Present', description: 'Կառուցում եմ ինտերակտիվ ԱԲ կրթական սցենարներ և React հավելվածներ։' }
@@ -83,6 +83,20 @@ export const PersonalLearningProfile: React.FC = () => {
       link: projLink
     };
     setProjects(prev => [newItem, ...prev]);
+    recordProject({
+      id: newItem.id,
+      title: newItem.title,
+      description: newItem.description,
+      type: 'build',
+      status: 'completed',
+      progress: 100,
+      skillsUsed: newItem.tech.split(',').map(s => s.trim()).filter(Boolean),
+      deliverables: newItem.link ? [{ id: newItem.id + '-link', title: 'Repository', type: 'code', url: newItem.link, description: 'Project repository', submittedAt: new Date().toISOString() }] : [],
+      repoUrl: newItem.link,
+      xpReward: 0,
+      hoursInvested: 0,
+      complexity: 'intermediate'
+    });
     setIsProjOpen(false);
     // Reset
     setProjTitle('');
