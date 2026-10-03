@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { auth, db } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { onLessonCompleted, onHabitCompleted, onProjectCompleted } from '../services/growthEngine';
-import { buildSkillGraph, diagnoseSkills, computeNextAction } from '../services/intelligenceEngine';
+import { buildSkillGraph, diagnoseSkills, computeNextAction, decomposeGoal } from '../services/intelligenceEngine';
 import { calculateSkillPoints } from '../data/skillMappings';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { AdaptiveGameService } from '../services/adaptiveGameService';
@@ -678,18 +678,132 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }, [updateProgress]);
 
   const activateGoal = useCallback((goal: string, categoryId: string) => {
-    setProfile(prev => {
-      if (!prev) return prev;
-      const goalTypeMap: any = { 'technology': 'programmer', 'marketing': 'marketing', 'languages': 'english' };
-      const tasks: DailyTask[] = [
-        { id: 'task-1', title: `${categoryId === 'technology' ? 'Կոդավորման' : categoryId === 'languages' ? 'Լեզվական' : 'Մասնագիտական'} նոր դաս`, completed: false, type: 'lesson' },
-        { id: 'task-2', title: 'Կրկնել թեմատիկ քարտերը', completed: false, type: 'flashcard' },
-        { id: 'task-3', title: 'Անցնել մասնագիտական թեստ', completed: false, type: 'quiz' }
+    const previous = profileRef.current;
+    if (!previous) return;
+
+    try {
+      const goalTypeMap: Record<string, string> = {
+        technology: 'programmer',
+        marketing: 'marketing',
+        languages: 'english',
+      };
+
+      const decomposition = decomposeGoal(
+        goal.trim(),
+        goalTypeMap[categoryId] || categoryId,
+        null,
+        []
+      );
+
+      const now = new Date().toISOString();
+      const baseline = diagnoseSkills(previous as any);
+      const skillGraph = buildSkillGraph(previous as any);
+
+      const persistedGoal = {
+        ...decomposition.goal,
+        category: categoryId,
+        linkedSkillIds: decomposition.requiredSkills.map(skill => skill.skillId),
+        totalWeeks: decomposition.totalWeeks,
+        requiredSkills: decomposition.requiredSkills,
+        milestones: decomposition.milestones.map(milestone => ({
+          ...milestone,
+          completed: false,
+        })),
+        learningPlan: decomposition.learningPlan,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      const domainGoal = {
+        ...persistedGoal,
+        linkedProjectIds: [] as string[],
+        linkedHabitIds: [] as string[],
+        tasks: [] as any[],
+      };
+
+      const nextAction = computeNextAction(skillGraph, [domainGoal]);
+
+      const dailyTasks: DailyTask[] = [
+        {
+          id: 'goal-learn',
+          title: nextAction.suggestedTask,
+          completed: false,
+          type: 'lesson',
+        },
+        {
+          id: 'goal-practice',
+          title: `Practice ${nextAction.skillName} — 3 exercises`,
+          completed: false,
+          type: 'quiz',
+        },
+        {
+          id: 'goal-review',
+          title: `Review ${nextAction.skillName}`,
+          completed: false,
+          type: 'flashcard',
+        },
       ];
-      return { ...prev, customGoal: goal, discovery: { ...prev.discovery!, goal: goalTypeMap[categoryId] || 'other' }, discipline: { ...prev.discipline, dailyTasks: tasks } };
-    });
-    toast.success('Նպատակը և օրվա առաջադրանքները թարմացվեցին!');
-  }, []);
+
+      const currentIntelligence = previous.intelligenceState || {
+        goals: [],
+        skillBaseline: [],
+        lastMission: null,
+        lastNextAction: null,
+        updatedAt: now,
+      };
+
+      // Keep completed/abandoned goals as history, but replace an existing
+      // active goal so the learner has one unambiguous current roadmap.
+      const goals = [
+        ...currentIntelligence.goals.filter(existing => existing.status !== 'active'),
+        persistedGoal,
+      ];
+
+      const nextProfile: UserProfile = {
+        ...previous,
+        customGoal: goal.trim(),
+        discovery: {
+          ...(previous.discovery || {
+            skillLevel: 'Beginner',
+            dailyTime: '30',
+            style: 'practice',
+          }),
+          goal: (goalTypeMap[categoryId] || 'other') as any,
+        },
+        discipline: {
+          ...previous.discipline,
+          dailyTasks,
+          completedToday: false,
+        },
+        intelligenceState: {
+          ...currentIntelligence,
+          goals,
+          skillBaseline: baseline,
+          lastNextAction: {
+            type: nextAction.type,
+            skillId: nextAction.skillId,
+            skillName: nextAction.skillName,
+            reason: nextAction.reason,
+            suggestedTask: nextAction.suggestedTask,
+            priority: nextAction.priority,
+            urgency: nextAction.urgency,
+          },
+          updatedAt: now,
+        },
+        lastActive: now,
+      };
+
+      setProfile(nextProfile);
+      profileRef.current = nextProfile;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextProfile));
+      syncToFirestoreNow(nextProfile).catch(() => {});
+
+      toast.success('Նպատակը վերածվեց անհատական զարգացման ճանապարհի։');
+    } catch (error) {
+      console.error('Goal activation failed:', error);
+      toast.error('Չհաջողվեց կառուցել նպատակի զարգացման ճանապարհը։');
+    }
+  }, [syncToFirestoreNow]);
 
   const updateXp = useCallback((amount: number) => {
     setProfile(prev => {
