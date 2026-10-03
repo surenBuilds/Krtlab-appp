@@ -672,8 +672,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         };
         if (existing >= 0) portfolio[existing] = item as any; else portfolio.unshift(item as any);
       }
-      const nextProfile: any = {...prev, projects: nextProjects, portfolio, updatedAt: now, lastActive: now};
-      if (nextProfile.intelligenceState) nextProfile.intelligenceState = syncEvidenceFromProgress(nextProfile, nextProfile.intelligenceState);
+      let nextProfile: any = {...prev, projects: nextProjects, portfolio, updatedAt: now, lastActive: now};
+      if (nextProfile.intelligenceState) {
+        const intelligenceState = syncEvidenceFromProgress(nextProfile, nextProfile.intelligenceState);
+        nextProfile = {
+          ...nextProfile,
+          intelligenceState,
+          skills: (intelligenceState as any).canonicalSkills || nextProfile.skills || [],
+          mastery: (intelligenceState as any).canonicalMastery || nextProfile.mastery || [],
+        };
+      }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(nextProfile));
       syncToFirestoreNow(nextProfile).catch(() => {});
       return nextProfile;
