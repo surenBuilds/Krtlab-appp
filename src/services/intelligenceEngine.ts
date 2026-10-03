@@ -98,6 +98,39 @@ export function generateDailyMission(sg:SkillNode[],goals:Goal[],_p:GrowthProfil
 
 export interface ProgressSummary {growthScore:number;skillsAssessed:number;skillsAboveThreshold:number;activeGoals:number;completedGoals:number;weeklyXp:number;nextMilestone:string|null;topStrengths:string[];topWeaknesses:string[];}
 
+export function recalculateIntelligence(profile: GrowthProfile, existingState: any) {
+  const skillBaseline = diagnoseSkills(profile);
+  const skillGraph = buildSkillGraph(profile);
+  const goals = (existingState?.goals || []).map((goal: any) => {
+    if (goal.status !== "active" || !goal.requiredSkills?.length) return goal;
+    const masteryById = new Map(skillBaseline.map(s => [s.skillId, s.masteryScore]));
+    const progress = Math.round(
+      goal.requiredSkills.reduce((sum: number, req: any) => {
+        const mastery = masteryById.get(req.skillId) || 0;
+        const target = Math.max(1, Number(req.targetLevel) || 100);
+        return sum + Math.min(100, (mastery / target) * 100);
+      }, 0) / goal.requiredSkills.length
+    );
+    return { ...goal, progress: Math.min(100, progress), updatedAt: new Date().toISOString() };
+  });
+  const nextAction = computeNextAction(skillGraph, goals);
+  return {
+    ...existingState,
+    goals,
+    skillBaseline,
+    lastNextAction: {
+      type: nextAction.type,
+      skillId: nextAction.skillId,
+      skillName: nextAction.skillName,
+      reason: nextAction.reason,
+      suggestedTask: nextAction.suggestedTask,
+      priority: nextAction.priority,
+      urgency: nextAction.urgency,
+    },
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 export function summarizeProgress(profile:GrowthProfile,_sg:SkillNode[],goals:Goal[]):ProgressSummary{
   const bl=diagnoseSkills(profile);const ag=goals.filter(g=>g.status==="active");
   return{growthScore:profile.growthScore||0,skillsAssessed:bl.filter(b=>b.evidenceCount>0).length,skillsAboveThreshold:bl.filter(b=>b.masteryScore>40).length,activeGoals:ag.length,completedGoals:goals.filter(g=>g.status==="completed").length,weeklyXp:Math.round(profile.xp/Math.max(1,(Date.now()-new Date(profile.createdAt).getTime())/(7*86400000))),nextMilestone:ag[0]?.title||null,topStrengths:bl.filter(b=>b.masteryScore>60).map(b=>b.name).slice(0,5),topWeaknesses:bl.filter(b=>b.masteryScore<30).map(b=>b.name).slice(0,5)};
