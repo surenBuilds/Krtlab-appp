@@ -62,8 +62,8 @@ export const AICourseEngine: React.FC = () => {
 
     try {
       const content = await generateLessonContent(
-        cat.title,
-        sub.title,
+        cat.id,
+        sub.id,
         1,
         sub.recommendedLiterature,
         [],
