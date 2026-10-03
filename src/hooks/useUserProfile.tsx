@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { auth, db } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { onLessonCompleted, onHabitCompleted, onProjectCompleted } from '../services/growthEngine';
-import { buildSkillGraph, diagnoseSkills, computeNextAction, decomposeGoal, recalculateIntelligence } from '../services/intelligenceEngine';
+import { buildSkillGraph, diagnoseSkills, computeNextAction, decomposeGoal, recalculateIntelligence, syncEvidenceFromProgress } from '../services/intelligenceEngine';
 import { calculateSkillPoints } from '../data/skillMappings';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { AdaptiveGameService } from '../services/adaptiveGameService';
@@ -497,7 +497,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       // Update Intelligence Core state after lesson completion
       if (nextProfile.intelligenceState?.goals?.length) {
         try {
-          const nextIntel = recalculateIntelligence(nextProfile as any, nextProfile.intelligenceState);
+          const nextIntel = syncEvidenceFromProgress(nextProfile as any, nextProfile.intelligenceState);
           const withIntel = { ...nextProfile, intelligenceState: nextIntel };
           setProfile(withIntel);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(withIntel));
@@ -567,18 +567,26 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       const { newStreak, updateStreakTime } = calculateStreak(prev.streak, prev.lastStreakUpdate);
       const newXP = prev.xp + xpReward;
       const newLevel = Math.floor(newXP / 5000) + 2;
-      if (newLevel > prev.level) toast.success(`Շնորհավորում ենք: Դուք հասաք ${newLevel}-րդ մակարդակի:`);
-      return { 
-        ...prev, 
-        xp: newXP, 
-        level: newLevel, 
+      const nextProfile = {
+        ...prev,
+        xp: newXP,
+        level: newLevel,
         streak: newStreak,
         lastStreakUpdate: updateStreakTime,
         completedProjects: [...prev.completedProjects, projectId],
         lastActive: new Date().toISOString()
       };
+      if (newLevel > prev.level) toast.success(`Շնորհավորում ենք: Դուք հասաք ${newLevel}-րդ մակարդակի:`);
+      if (nextProfile.intelligenceState) {
+        const intelligenceState = syncEvidenceFromProgress(nextProfile as any, nextProfile.intelligenceState);
+        const finalProfile = { ...nextProfile, intelligenceState };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(finalProfile));
+        syncToFirestoreNow(finalProfile).catch(() => {});
+        return finalProfile;
+      }
+      return nextProfile;
     });
-  }, [calculateStreak]);
+  }, [calculateStreak, syncToFirestoreNow]);
 
   const updateGameScore = useCallback((gameId: string, score: number, xpReward: number, result?: GameSessionResult) => {
     setProfile(prev => {
