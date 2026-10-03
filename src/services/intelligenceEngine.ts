@@ -65,10 +65,10 @@ export type ActionType="teach"|"practice"|"project"|"assess"|"review"|"advance";
 export interface NextAction {type:ActionType;skillId:string;skillName:string;reason:string;suggestedTask:string;priority:Priority;urgency:"now"|"today"|"this_week"|"next_week";}
 
 export function computeNextAction(sg:SkillNode[],goals:Goal[],rm:string[]=[],_t:number=30):NextAction{
-  const ag=goals.filter(g=>g.status==="active");const ask=new Set(new Set<string>());
-  let ts:SkillNode|undefined;
-  if(ask.size>0){const gs=sg.filter(n=>ask.has(n.skillId));ts=gs.sort((a,b)=>a.masteryScore-b.masteryScore)[0];}
-  if(!ts)ts=sg.sort((a,b)=>a.masteryScore-b.masteryScore)[0];
+  const ag=goals.filter(g=>g.status==="active");
+  const requiredIds=new Set(ag.flatMap(g=>(g.requiredSkills||[]).map(s=>s.skillId)));
+  const goalSkills=requiredIds.size>0?sg.filter(n=>requiredIds.has(n.skillId)):sg;
+  let ts:SkillNode|undefined=goalSkills.slice().sort((a,b)=>a.masteryScore-b.masteryScore)[0];
   if(!ts)return{type:"teach",skillId:"critical-thinking",skillName:"Critical Thinking",reason:"No skills assessed",suggestedTask:"Complete skill diagnostic",priority:"high",urgency:"now"};
   const m=ts.masteryScore;let type:ActionType,reason:string,suggestedTask:string;
   if(m<20){type="teach";reason=`${ts.name} at ${m}%`;suggestedTask=`Start learning ${ts.name}`;}
