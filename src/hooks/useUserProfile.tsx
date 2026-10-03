@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { auth, db } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { onLessonCompleted, onHabitCompleted, onProjectCompleted } from '../services/growthEngine';
-import { buildSkillGraph, diagnoseSkills, computeNextAction, decomposeGoal } from '../services/intelligenceEngine';
+import { buildSkillGraph, diagnoseSkills, computeNextAction, decomposeGoal, recalculateIntelligence } from '../services/intelligenceEngine';
 import { calculateSkillPoints } from '../data/skillMappings';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { AdaptiveGameService } from '../services/adaptiveGameService';
@@ -497,37 +497,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       // Update Intelligence Core state after lesson completion
       if (nextProfile.intelligenceState?.goals?.length) {
         try {
-          const is = nextProfile.intelligenceState;
-          const baseline = diagnoseSkills(nextProfile as any);
-          const sg = buildSkillGraph(nextProfile as any);
-          const domainGoals = is.goals.map(g => ({
-            id: g.id, title: g.title, description: g.description,
-            category: g.category as any, status: g.status, priority: g.priority,
-            progress: g.progress, linkedSkillIds: g.linkedSkillIds,
-            linkedProjectIds: [] as string[], linkedHabitIds: [] as string[],
-            difficulty: g.difficulty, estimatedHours: g.estimatedHours,
-            tasks: [] as any[], subGoals: [] as string[],
-            requiredSkills: (g as any).requiredSkills || [],
-            requiredKnowledge: (g as any).requiredKnowledge || [],
-            milestones: (g as any).milestones || [],
-            learningPlan: (g as any).learningPlan || [],
-            actualHours: (g as any).actualHours || 0,
-            createdAt: g.createdAt, updatedAt: g.updatedAt,
-          }));
-          const na = computeNextAction(sg, domainGoals);
-          
-          const nextIntel = {
-            ...is,
-            skillBaseline: baseline,
-            lastNextAction: {
-              type: na.type, skillId: na.skillId, skillName: na.skillName,
-              reason: na.reason, suggestedTask: na.suggestedTask,
-              priority: na.priority, urgency: na.urgency,
-            },
-            updatedAt: new Date().toISOString(),
-          };
+          const nextIntel = recalculateIntelligence(nextProfile as any, nextProfile.intelligenceState);
           const withIntel = { ...nextProfile, intelligenceState: nextIntel };
+          setProfile(withIntel);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(withIntel));
+          syncToFirestoreNow(withIntel).catch(() => {});
         } catch (e) { /* non-critical */ }
       }
     }
