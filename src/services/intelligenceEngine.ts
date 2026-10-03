@@ -102,19 +102,72 @@ export function syncEvidenceFromProgress(profile: GrowthProfile, existingState: 
   const next = recalculateIntelligence(profile, existingState);
   const now = new Date().toISOString();
   const evidenceBySkill = new Map<string, SkillEvidence[]>();
-  for (const mapping of SUBFIELD_SKILL_MAP!) {
+  for (const mapping of SUBFIELD_SKILL_MAP || []) {
     const sub = (profile as any)?.progress?.categories?.[mapping.categoryId]?.subfields?.[mapping.subfieldId];
     if (!sub) continue;
-    const levels = new Set<number>([...(sub.completedLessons || []), ...(sub.completedQuizzes || []), ...(sub.completedPractices || []), ...(sub.completedGames || [])]);
-    if (!levels.size) continue;
+    const sources: Array<["lesson"|"assessment"|"practice"|"simulation", number[]]> = [
+      ["lesson", sub.completedLessons || []],
+      ["assessment", sub.completedQuizzes || []],
+      ["practice", sub.completedPractices || []],
+      ["simulation", sub.completedGames || []],
+    ];
     for (const skill of mapping.skills || []) {
       const list = evidenceBySkill.get(skill.skillId) || [];
-      for (const level of levels) list.push({source: sub.completedPractices?.includes(level) ? "practice" : sub.completedQuizzes?.includes(level) ? "assessment" : "lesson", sourceId: mapping.subfieldId + ":" + level, description: "Completed level " + level + " in " + mapping.subfieldId, points: Math.min(25, 5 + level), timestamp: now});
+      for (const [source, levels] of sources) {
+        for (const level of levels) {
+          const sourceId = mapping.categoryId + ":" + mapping.subfieldId + ":" + source + ":" + level;
+          if (!list.some(e => e.sourceId === sourceId)) {
+            list.push({
+              source,
+              sourceId,
+              description: "Completed level " + level + " in " + mapping.subfieldId,
+              points: Math.max(1, skill.points || 1) * Math.max(1, Number(level) || 1),
+              timestamp: now,
+            });
+          }
+        }
+      }
       evidenceBySkill.set(skill.skillId, list);
     }
   }
-  next.skillBaseline = next.skillBaseline.map((skill: any) => ({...skill, evidenceCount: Math.max(skill.evidenceCount || 0, evidenceBySkill.get(skill.skillId)?.length || 0), lastAssessed: evidenceBySkill.get(skill.skillId)?.length ? now : skill.lastAssessed}));
-  return next;
+
+  const baseline = next.skillBaseline.map((skill: any) => ({
+    ...skill,
+    evidenceCount: Math.max(skill.evidenceCount || 0, evidenceBySkill.get(skill.skillId)?.length || 0),
+    lastAssessed: evidenceBySkill.get(skill.skillId)?.length ? now : skill.lastAssessed,
+  }));
+
+  const canonicalSkills = ((profile as any).skills || []).map((skill: any) => {
+    const evidence = evidenceBySkill.get(skill.id) || skill.evidence || [];
+    const unique = [...new Map(evidence.map((e: SkillEvidence) => [e.sourceId, e])).values()];
+    const earned = unique.reduce((sum: number, e: SkillEvidence) => sum + (e.points || 0), 0);
+    const currentLevel = Math.min(100, Math.max(skill.currentLevel || 0, Math.round(earned)));
+    return {
+      ...skill,
+      currentLevel,
+      targetLevel: Math.max(skill.targetLevel || 0, currentLevel),
+      evidence: unique,
+      hoursInvested: skill.hoursInvested || 0,
+      lastPracticed: unique.length ? now : skill.lastPracticed,
+      updatedAt: now,
+    };
+  });
+
+  const canonicalMastery = ((profile as any).mastery || []).map((mastery: any) => {
+    const evidence = evidenceBySkill.get(mastery.skillId) || mastery.evidence || [];
+    const unique = [...new Map(evidence.map((e: SkillEvidence) => [e.sourceId, e])).values()];
+    const earned = unique.reduce((sum: number, e: SkillEvidence) => sum + (e.points || 0), 0);
+    const overallMastery = Math.min(100, Math.max(mastery.overallMastery || 0, Math.round(earned)));
+    return {
+      ...mastery,
+      overallMastery,
+      evidence: unique,
+      lastPracticed: unique.length ? now : mastery.lastPracticed,
+      lastAssessed: unique.length ? now : mastery.lastAssessed,
+    };
+  });
+
+  return { ...next, skillBaseline: baseline, canonicalSkills, canonicalMastery };
 }
 
 export function recalculateIntelligence(profile: GrowthProfile, existingState: any) {
