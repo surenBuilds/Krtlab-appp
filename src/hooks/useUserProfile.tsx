@@ -630,6 +630,45 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     });
   }, [calculateStreak]);
 
+  const recordProject = useCallback((project: any) => {
+    setProfile(prev => {
+      if (!prev) return prev;
+      const now = new Date().toISOString();
+      const projectId = project.id || "project-" + Date.now();
+      const skillsUsed = project.skillsUsed || [];
+      const nextProjects = [...(prev.projects || [])].filter((p: any) => p.id !== projectId);
+      nextProjects.push({
+        id: projectId, title: project.title || "Untitled Project", description: project.description || "",
+        type: project.type || "build", status: project.status || "completed", progress: project.progress ?? 100,
+        skillsUsed, knowledgeApplied: project.knowledgeApplied || [], tasks: project.tasks || [],
+        deliverables: project.deliverables || [], repoUrl: project.repoUrl, liveUrl: project.liveUrl,
+        xpReward: project.xpReward || 0, hoursInvested: project.hoursInvested || 0,
+        complexity: project.complexity || "intermediate", createdAt: project.createdAt || now,
+        completedAt: project.status === "completed" ? (project.completedAt || now) : project.completedAt, updatedAt: now
+      });
+      const portfolio = [...(prev.portfolio || [])];
+      if (project.status === "completed") {
+        const existing = portfolio.findIndex((item: any) => item.id === "portfolio-" + projectId);
+        const item = {
+          id: "portfolio-" + projectId, title: project.title || "Project",
+          description: project.description || "", type: "project",
+          links: [
+            ...(project.repoUrl ? [{label: "Repository", url: project.repoUrl}] : []),
+            ...(project.liveUrl ? [{label: "Live", url: project.liveUrl}] : [])
+          ],
+          skillsHighlighted: skillsUsed, isPublished: false,
+          createdAt: project.createdAt || now, updatedAt: now
+        };
+        if (existing >= 0) portfolio[existing] = item as any; else portfolio.unshift(item as any);
+      }
+      const nextProfile: any = {...prev, projects: nextProjects, portfolio, updatedAt: now, lastActive: now};
+      if (nextProfile.intelligenceState) nextProfile.intelligenceState = syncEvidenceFromProgress(nextProfile, nextProfile.intelligenceState);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextProfile));
+      syncToFirestoreNow(nextProfile).catch(() => {});
+      return nextProfile;
+    });
+  }, [syncToFirestoreNow]);
+
   const updateCustomGoal = useCallback((goal: string) => setProfile(prev => prev ? { ...prev, customGoal: goal } : prev), []);
 
   const toggleDemoMode = useCallback(() => {
