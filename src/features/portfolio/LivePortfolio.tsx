@@ -10,7 +10,7 @@ import type { GrowthProfile } from "../../types/learner";
 export const LivePortfolio: React.FC = () => {
   const { profile } = useUserProfile();
   const gp = profile as unknown as GrowthProfile;
-  const strengths = gp?.strengths || [];
+  const strengths = (gp?.skills || []).filter((s: any) => (s.currentLevel || 0) > 0).sort((a: any, b: any) => b.currentLevel - a.currentLevel).slice(0, 8);
 
   const learningProgress = useMemo(() => {
     if (!profile?.progress?.categories) return [];
@@ -24,7 +24,7 @@ export const LivePortfolio: React.FC = () => {
     return items.sort((a, b) => b.progress - a.progress);
   }, [profile]);
 
-  const skillsForPortfolio = useMemo(() => SKILL_DEFINITIONS.filter((s) => strengths.includes(s.id)).slice(0, 8), [strengths]);
+  const skillsForPortfolio = useMemo(() => strengths, [strengths]);
 
   return (<div className="space-y-8">
     <div><h2 className="text-4xl font-black text-slate-900 flex items-center gap-3"><Briefcase className="text-primary" size={32}/>Live Portfolio</h2><p className="text-slate-500 mt-2">Ավտոմատ թարմացվող պորտֆոլիո — յուրաքանչյուր սովորելուց հետո</p></div>
