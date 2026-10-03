@@ -21,16 +21,18 @@ export const CareerPathEngine: React.FC = () => {
   const navigate = useNavigate();
   const gp = profile as unknown as GrowthProfile;
   const userStrengths = gp?.strengths || [];
+  const mastery = gp?.intelligenceState?.skillBaseline || [];
 
   const roles = useMemo(() => CAREER_ROLES.map((role) => {
-    let matched = 0;
-    const gaps: { skillId: string; current: number; required: number; priority: string }[] = role.requiredSkills.map((sid, i) => {
-      const isStrong = userStrengths.includes(sid);
-      if (isStrong) matched++;
-      return { skillId: sid, current: isStrong ? 65 : 0, required: 70, priority: isStrong ? "low" as const : i === 0 ? "high" as const : "medium" as const };
+    const gaps = role.requiredSkills.map((sid, i) => {
+      const node: any = mastery.find((s: any) => s.skillId === sid);
+      const current = Math.round(node?.masteryScore || 0);
+      const required = 70;
+      return { skillId: sid, current, required, priority: current >= required ? "low" as const : i === 0 ? "high" as const : "medium" as const };
     });
-    return { role, gaps, match: Math.round((matched / role.requiredSkills.length) * 100), open: gaps.filter((g) => g.priority !== "low") };
-  }).sort((a, b) => b.match - a.match), [userStrengths]);
+    const match = Math.round(gaps.reduce((sum, g) => sum + Math.min(100, (g.current / g.required) * 100), 0) / gaps.length);
+    return { role, gaps, match, open: gaps.filter((g) => g.priority !== "low") };
+  }).sort((a, b) => b.match - a.match), [mastery]);
 
   const top = roles[0];
 
