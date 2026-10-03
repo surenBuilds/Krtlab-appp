@@ -580,7 +580,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       if (newLevel > prev.level) toast.success(`Շնորհավորում ենք: Դուք հասաք ${newLevel}-րդ մակարդակի:`);
       if (nextProfile.intelligenceState) {
         const intelligenceState = syncEvidenceFromProgress(nextProfile as any, nextProfile.intelligenceState);
-        const finalProfile = { ...nextProfile, intelligenceState };
+        const finalProfile = {
+          ...nextProfile,
+          intelligenceState,
+          skills: (intelligenceState as any).canonicalSkills || nextProfile.skills || [],
+          mastery: (intelligenceState as any).canonicalMastery || nextProfile.mastery || [],
+        };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(finalProfile));
         syncToFirestoreNow(finalProfile).catch(() => {});
         return finalProfile;
