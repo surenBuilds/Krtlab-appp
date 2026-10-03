@@ -5,6 +5,7 @@ import { cn } from "../../lib/utils";
 import { useUserProfile } from "../../hooks/useUserProfile";
 import { generateLessonContent } from "../../services/geminiService";
 import { CATEGORIES } from "../../data/categories";
+import { SKILL_DEFINITIONS, SUBFIELD_SKILL_MAP } from "../../data/skillMappings";
 import { toast } from "sonner";
 
 interface AICourse { id: string; title: string; category: string; totalLevels: number; currentLevel: number; status: "ready"|"generating"|"error"; topics: string[]; }
@@ -17,19 +18,70 @@ export const AICourseEngine: React.FC = () => {
   const [courseContent, setCourseContent] = useState<any>(null);
 
   const generateNewCourse = useCallback(async () => {
+    const activeGoal = profile?.intelligenceState?.goals?.find(g => g.status === "active");
+    if (!activeGoal) {
+      toast.error("Սկզբում ակտիվացրու նպատակ, որպեսզի դասընթացը կառուցվի հենց դրա համար։");
+      return;
+    }
+
+    const required = activeGoal.requiredSkills || [];
+    const baseline = profile?.intelligenceState?.skillBaseline || [];
+    const nextRequired = [...required]
+      .sort((a, b) => {
+        const am = baseline.find(s => s.skillId === a.skillId)?.masteryScore ?? 0;
+        const bm = baseline.find(s => s.skillId === b.skillId)?.masteryScore ?? 0;
+        return am - bm;
+      })[0];
+
+    if (!nextRequired) {
+      toast.error("Այս նպատակի համար դեռ անհրաժեշտ skills չեն հայտնաբերվել։");
+      return;
+    }
+
+    const skill = SKILL_DEFINITIONS.find(s => s.id === nextRequired.skillId);
+    const mapping = SUBFIELD_SKILL_MAP.find(m => m.skills.some(s => s.skillId === nextRequired.skillId));
+    const cat = CATEGORIES.find(c => c.id === mapping?.categoryId);
+    const sub = cat?.subfields.find(s => s.id === mapping?.subfieldId);
+
+    if (!skill || !cat || !sub) {
+      toast.error("Չհաջողվեց գտնել այս skill-ի ուսուցման բովանդակությունը։");
+      return;
+    }
+
     setGenerating(true);
-    const cat = CATEGORIES[Math.floor(Math.random()*CATEGORIES.length)];
-    const sub = cat.subfields[Math.floor(Math.random()*cat.subfields.length)];
-    const nc: AICourse = { id:`ai-${Date.now()}`,title:`${sub.title} — AI Course`,category:cat.id,totalLevels:5,currentLevel:0,status:"generating",topics:sub.courseTopics?.slice(0,5)||[] };
-    setCourses(p=>[nc,...p]);
+    const nc: AICourse = {
+      id: `ai-${Date.now()}`,
+      title: `${skill.name} — ${activeGoal.title}`,
+      category: cat.id,
+      totalLevels: Math.min(activeGoal.totalWeeks || 5, 5),
+      currentLevel: 0,
+      status: "generating",
+      topics: sub.courseTopics?.slice(0, 5) || [skill.name]
+    };
+    setCourses(p => [nc, ...p]);
+
     try {
-      const content = await generateLessonContent(cat.title, sub.title, 1, sub.recommendedLiterature, [], nc.topics[0], 1);
-      setCourses(p=>p.map(c=>c.id===nc.id?{...c,status:"ready",currentLevel:1}:c));
-      setActiveCourse(nc); setCourseContent(content);
-      toast.success(`AI Course "${nc.title}" is ready!`);
-    } catch { setCourses(p=>p.map(c=>c.id===nc.id?{...c,status:"error"}:c)); toast.error("Failed"); }
-    finally { setGenerating(false); }
-  }, []);
+      const content = await generateLessonContent(
+        cat.title,
+        sub.title,
+        1,
+        sub.recommendedLiterature,
+        [],
+        nc.topics[0],
+        nextRequired.targetLevel
+      );
+      const ready = { ...nc, status: "ready" as const, currentLevel: 1 };
+      setCourses(p => p.map(c => c.id === nc.id ? ready : c));
+      setActiveCourse(ready);
+      setCourseContent(content);
+      toast.success(`"${nc.title}" դասընթացը պատրաստ է։`);
+    } catch {
+      setCourses(p => p.map(c => c.id === nc.id ? { ...c, status: "error" as const } : c));
+      toast.error("Դասընթացի ստեղծումը չհաջողվեց։");
+    } finally {
+      setGenerating(false);
+    }
+  }, [profile]);
 
   return (<div className="space-y-8">
     <div className="flex items-center justify-between"><div><h2 className="text-4xl font-black flex items-center gap-3"><Sparkles className="text-primary" size={32}/>AI Course Generator</h2><p className="text-slate-500 mt-2">ԱԲ-ն անընդհատ ստեղծում և թարմացնում է դասընթացներ</p></div>
