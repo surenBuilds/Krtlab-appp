@@ -98,6 +98,25 @@ export function generateDailyMission(sg:SkillNode[],goals:Goal[],_p:GrowthProfil
 
 export interface ProgressSummary {growthScore:number;skillsAssessed:number;skillsAboveThreshold:number;activeGoals:number;completedGoals:number;weeklyXp:number;nextMilestone:string|null;topStrengths:string[];topWeaknesses:string[];}
 
+export function syncEvidenceFromProgress(profile: GrowthProfile, existingState: any) {
+  const next = recalculateIntelligence(profile, existingState);
+  const now = new Date().toISOString();
+  const evidenceBySkill = new Map<string, SkillEvidence[]>();
+  for (const mapping of SUBFIELD_SKILL_MAP!) {
+    const sub = (profile as any)?.progress?.categories?.[mapping.categoryId]?.subfields?.[mapping.subfieldId];
+    if (!sub) continue;
+    const levels = new Set<number>([...(sub.completedLessons || []), ...(sub.completedQuizzes || []), ...(sub.completedPractices || []), ...(sub.completedGames || [])]);
+    if (!levels.size) continue;
+    for (const skill of mapping.skills || []) {
+      const list = evidenceBySkill.get(skill.skillId) || [];
+      for (const level of levels) list.push({source: sub.completedPractices?.includes(level) ? "practice" : sub.completedQuizzes?.includes(level) ? "assessment" : "lesson", sourceId: mapping.subfieldId + ":" + level, description: "Completed level " + level + " in " + mapping.subfieldId, points: Math.min(25, 5 + level), timestamp: now});
+      evidenceBySkill.set(skill.skillId, list);
+    }
+  }
+  next.skillBaseline = next.skillBaseline.map((skill: any) => ({...skill, evidenceCount: Math.max(skill.evidenceCount || 0, evidenceBySkill.get(skill.skillId)?.length || 0), lastAssessed: evidenceBySkill.get(skill.skillId)?.length ? now : skill.lastAssessed}));
+  return next;
+}
+
 export function recalculateIntelligence(profile: GrowthProfile, existingState: any) {
   const skillBaseline = diagnoseSkills(profile);
   const skillGraph = buildSkillGraph(profile);
