@@ -137,33 +137,77 @@ export function syncEvidenceFromProgress(profile: GrowthProfile, existingState: 
     lastAssessed: evidenceBySkill.get(skill.skillId)?.length ? now : skill.lastAssessed,
   }));
 
-  const canonicalSkills = ((profile as any).skills || []).map((skill: any) => {
-    const evidence = evidenceBySkill.get(skill.id) || skill.evidence || [];
+  const existingSkills = new Map<string, any>(
+    ((profile as any).skills || []).map((skill: any) => [skill.id, skill])
+  );
+  const existingMastery = new Map<string, any>(
+    ((profile as any).mastery || []).map((mastery: any) => [mastery.skillId, mastery])
+  );
+
+  const canonicalSkills = (SKILL_DEFINITIONS || []).map((def: any) => {
+    const skill = existingSkills.get(def.id) || {};
+    const evidence = evidenceBySkill.get(def.id) || skill.evidence || [];
     const unique = [...new Map(evidence.map((e: SkillEvidence) => [e.sourceId, e])).values()];
-    const earned = unique.reduce((sum: number, e: SkillEvidence) => sum + (e.points || 0), 0);
-    const currentLevel = Math.min(100, Math.max(skill.currentLevel || 0, Math.round(earned)));
+    const baseline = next.skillBaseline.find((item: any) => item.skillId === def.id);
+    const evidencePoints = unique.reduce((sum: number, e: SkillEvidence) => sum + (e.points || 0), 0);
+    const currentLevel = Math.min(100, Math.max(
+      Number(skill.currentLevel) || 0,
+      baseline?.masteryScore || 0,
+      Math.round(evidencePoints)
+    ));
     return {
-      ...skill,
+      id: def.id,
+      name: def.name,
+      category: def.category,
+      description: def.description || "",
+      icon: def.icon || "",
       currentLevel,
-      targetLevel: Math.max(skill.targetLevel || 0, currentLevel),
+      targetLevel: Math.max(Number(skill.targetLevel) || 0, 70),
+      levelLabel: currentLevel >= 90 ? "expert" : currentLevel >= 70 ? "advanced" : currentLevel >= 40 ? "intermediate" : "beginner",
+      prerequisites: skill.prerequisites || [],
+      dependencies: skill.dependencies || [],
+      relatedKnowledge: skill.relatedKnowledge || [],
       evidence: unique,
-      hoursInvested: skill.hoursInvested || 0,
-      lastPracticed: unique.length ? now : skill.lastPracticed,
+      hoursInvested: Number(skill.hoursInvested) || 0,
+      lastPracticed: unique.length ? now : (skill.lastPracticed || ""),
+      growthRate: Number(skill.growthRate) || 0,
+      createdAt: skill.createdAt || now,
       updatedAt: now,
     };
   });
 
-  const canonicalMastery = ((profile as any).mastery || []).map((mastery: any) => {
-    const evidence = evidenceBySkill.get(mastery.skillId) || mastery.evidence || [];
+  const canonicalMastery = (SKILL_DEFINITIONS || []).map((def: any) => {
+    const mastery = existingMastery.get(def.id) || {};
+    const evidence = evidenceBySkill.get(def.id) || mastery.evidence || [];
     const unique = [...new Map(evidence.map((e: SkillEvidence) => [e.sourceId, e])).values()];
-    const earned = unique.reduce((sum: number, e: SkillEvidence) => sum + (e.points || 0), 0);
-    const overallMastery = Math.min(100, Math.max(mastery.overallMastery || 0, Math.round(earned)));
+    const baseline = next.skillBaseline.find((item: any) => item.skillId === def.id);
+    const overallMastery = Math.min(100, Math.max(
+      Number(mastery.overallMastery) || 0,
+      baseline?.masteryScore || 0
+    ));
+    const dimensions = {
+      comprehension: overallMastery,
+      recall: overallMastery,
+      application: overallMastery,
+      transfer: overallMastery,
+      creation: overallMastery,
+      retention: Number(mastery.dimensions?.retention) || overallMastery,
+    };
     return {
-      ...mastery,
+      skillId: def.id,
+      skillName: def.name,
+      dimensions,
       overallMastery,
+      lastPracticed: unique.length ? now : (mastery.lastPracticed || ""),
+      retentionRate: Number(mastery.retentionRate) || overallMastery,
+      nextReviewDue: mastery.nextReviewDue,
+      interval: Number(mastery.interval) || 1,
+      easeFactor: Number(mastery.easeFactor) || 2.5,
+      repetitionCount: Number(mastery.repetitionCount) || 0,
+      assessmentHistory: mastery.assessmentHistory || [],
+      confidence: overallMastery >= 70 ? "high" : overallMastery >= 30 ? "medium" : "low",
+      lastAssessed: unique.length ? now : (mastery.lastAssessed || ""),
       evidence: unique,
-      lastPracticed: unique.length ? now : mastery.lastPracticed,
-      lastAssessed: unique.length ? now : mastery.lastAssessed,
     };
   });
 
