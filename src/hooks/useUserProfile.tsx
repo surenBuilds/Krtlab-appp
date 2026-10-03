@@ -120,6 +120,7 @@ interface UserContextType {
   completeDiscovery: (answers: any) => void;
   toggleDailyTask: (taskId: string) => void;
   completePracticeProject: (projectId: string, xpReward: number) => void;
+  recordProject: (project: any) => void;
   updateXp: (amount: number) => void;
   updateGameScore: (gameId: string, score: number, xpReward: number, result?: GameSessionResult) => void;
   updateCustomGoal: (goal: string) => void;
@@ -890,7 +891,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   return (
     <UserContext.Provider value={{ 
       profile, updateProfile, updateProgress, updateAdaptiveProgress, addFlashcards, updateFlashcardSRS, 
-      resetProgress, completeDiscovery, toggleDailyTask, completePracticeProject, 
+      resetProgress, completeDiscovery, toggleDailyTask, completePracticeProject, recordProject, 
       updateGameScore, updateCustomGoal, activateGoal, submitPracticeWork,
       updateXp, updateIntelligenceState, toggleDemoMode, updateRole, syncNow,
       loading, user 
