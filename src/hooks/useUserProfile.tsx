@@ -495,11 +495,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(nextProfile));
       syncToFirestoreNow(nextProfile).catch(() => {});
       
-      // Update Intelligence Core state after lesson completion
-      if (nextProfile.intelligenceState?.goals?.length) {
+      // Recalculate the intelligence layer after every learning evidence event.
+      if (nextProfile.intelligenceState) {
         try {
-          const nextIntel = syncEvidenceFromProgress(nextProfile as any, nextProfile.intelligenceState);
-          const withIntel = { ...nextProfile, intelligenceState: nextIntel };
+          const intelligenceState = syncEvidenceFromProgress(nextProfile as any, nextProfile.intelligenceState);
+          const withIntel = {
+            ...nextProfile,
+            intelligenceState,
+            skills: (intelligenceState as any).canonicalSkills || nextProfile.skills || [],
+            mastery: (intelligenceState as any).canonicalMastery || nextProfile.mastery || [],
+          };
           setProfile(withIntel);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(withIntel));
           syncToFirestoreNow(withIntel).catch(() => {});
