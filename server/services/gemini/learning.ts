@@ -35,11 +35,112 @@ export async function analyzeProgress(params: { lessonId: string; quizScore: num
 }
 
 export async function generateLessonContent(params: any): Promise<any> {
-  const { category, subfield, level, literature, previousLessons, currentTopic, topicIndex } = params;
-  const sources = getSourceMap()[subfield] || "Academic standards";
-  const prompt = `You are the KrtLab Learning Engine. Generate Level #${level} of a 20-level course. Category: ${category}, Subfield: ${subfield}. Sources: ${sources}. ${currentTopic ? `Topic: "${currentTopic}"` : ""}. Return JSON with: title, topicId, topicName, orderIndex, introduction, keyConcepts[], detailedExplanation, examples[], exercises[], miniSummary, recommendedReading[], quiz[{question,options[],correctAnswer,explanation}], practicalTask:{title,scenario,instructions,deliverable,evaluationCriteria}, game:{title,scenario,player_role,steps[]}, completion:{message,total_xp}, requiredScore. All in Armenian. ONLY JSON.`;
-  const response = await withRetry(() => ai().models.generateContent({ model: TEXT_MODEL, contents: prompt, config: { responseMimeType: "application/json" } }));
-  try { return JSON.parse(response.text || "{}"); } catch { return getFallbackLesson(category, subfield, level, currentTopic, topicIndex); }
+  const {
+    category, subfield, level, literature, previousLessons = [], currentTopic, topicIndex, curriculum = []
+  } = params;
+
+  const sources = getSourceMap()[subfield] || "Use the supplied recommended literature and established academic/industry standards.";
+  const phase = level <= 4 ? "Foundation" : level <= 8 ? "Core concepts" : level <= 12 ? "Applied practice" : level <= 16 ? "Advanced application" : "Integration and capstone";
+  const curriculumText = curriculum.length ? curriculum.map((t: string, i: number) => `${i + 1}. ${t}`).join("\n") : currentTopic || subfield;
+  const previousText = previousLessons.slice(-4).map((x: string, i: number) => `${i + 1}. ${x}`).join("\n");
+
+  const prompt = `You are KrtLab's professional curriculum engine. Design a rigorous, skill-based lesson, not generic motivational content.
+
+DOMAIN: ${category}
+SUBFIELD: ${subfield}
+LEVEL: ${level}/20
+PHASE: ${phase}
+CURRENT TOPIC: ${currentTopic || subfield}
+TOPIC INDEX: ${topicIndex ?? level - 1}
+
+COURSE CURRICULUM:
+${curriculumText}
+
+RECOMMENDED SOURCES:
+${sources}
+
+RECOMMENDED LITERATURE:
+${JSON.stringify(literature || {})}
+
+RECENT LESSONS:
+${previousText || "None"}
+
+QUALITY RULES:
+1. Teach one clearly bounded learning objective at this level.
+2. Progress from prerequisite knowledge to application; never assume mastery of later concepts.
+3. Use precise terminology and concrete examples appropriate to the domain.
+4. Do not invent facts, statistics, standards, laws, citations, URLs, book details, or named frameworks. If a claim cannot be supported by the supplied sources or established knowledge, omit it or mark it as an example/assumption.
+5. Do not repeat previous lessons except for deliberate prerequisite review.
+6. Exercises must test the stated objective. Practical work must produce a verifiable deliverable.
+7. Quiz must test understanding and application, not only recall. Include exactly 5 questions with 4 options each and one correct answer index.
+8. Include an evaluation rubric with observable criteria.
+9. Set requiredScore between 70 and 85; do not mark a learner as mastered from lesson completion alone.
+10. All learner-facing content must be in Armenian. Technical terms may include their standard English term in parentheses.
+11. Return valid JSON only.
+
+Return this exact structure:
+{
+  "title": "...",
+  "topicId": "...",
+  "topicName": "...",
+  "orderIndex": ${level},
+  "phase": "${phase}",
+  "learningObjectives": ["..."],
+  "prerequisites": ["..."],
+  "introduction": "...",
+  "keyConcepts": ["..."],
+  "detailedExplanation": "...",
+  "examples": ["..."],
+  "exercises": ["..."],
+  "miniSummary": "...",
+  "recommendedReading": [],
+  "quiz": [{"question":"...","options":["...","...","...","..."],"correctAnswer":0,"explanation":"..."}],
+  "practicalTask": {"title":"...","scenario":"...","instructions":["..."],"deliverable":"...","evaluationCriteria":["..."]},
+  "assessmentRubric": [{"criterion":"...","weight":25,"masteryEvidence":"..."}],
+  "commonMistakes": ["..."],
+  "completion": {"message":"...","total_xp":100},
+  "requiredScore": 80
+}`;
+
+  const response = await withRetry(() => ai().models.generateContent({
+    model: TEXT_MODEL,
+    contents: prompt,
+    config: { responseMimeType: "application/json" }
+  }));
+
+  try {
+    const parsed = JSON.parse(response.text || "{}");
+    return normalizeLesson(parsed, category, subfield, level, currentTopic, topicIndex);
+  } catch {
+    return getFallbackLesson(category, subfield, level, currentTopic, topicIndex);
+  }
+}
+
+function normalizeLesson(lesson: any, category: string, subfield: string, level: number, topic?: string, idx?: number) {
+  const quiz = Array.isArray(lesson.quiz) ? lesson.quiz.filter((q: any) =>
+    q && typeof q.question === "string" && Array.isArray(q.options) && q.options.length === 4 &&
+    Number.isInteger(q.correctAnswer) && q.correctAnswer >= 0 && q.correctAnswer < 4
+  ).slice(0, 5) : [];
+
+  return {
+    ...lesson,
+    title: lesson.title || topic || `${subfield} — Level ${level}`,
+    topicId: lesson.topicId || `${subfield}-${level}`,
+    topicName: lesson.topicName || topic || subfield,
+    orderIndex: level,
+    phase: lesson.phase || (level <= 4 ? "Foundation" : level <= 8 ? "Core concepts" : level <= 12 ? "Applied practice" : level <= 16 ? "Advanced application" : "Integration and capstone"),
+    learningObjectives: Array.isArray(lesson.learningObjectives) ? lesson.learningObjectives.slice(0, 4) : [],
+    prerequisites: Array.isArray(lesson.prerequisites) ? lesson.prerequisites : [],
+    keyConcepts: Array.isArray(lesson.keyConcepts) ? lesson.keyConcepts : [],
+    examples: Array.isArray(lesson.examples) ? lesson.examples : [],
+    exercises: Array.isArray(lesson.exercises) ? lesson.exercises : [],
+    recommendedReading: Array.isArray(lesson.recommendedReading) ? lesson.recommendedReading : [],
+    quiz,
+    practicalTask: lesson.practicalTask || { title: "Գործնական առաջադրանք", scenario: "", instructions: [], deliverable: "", evaluationCriteria: [] },
+    assessmentRubric: Array.isArray(lesson.assessmentRubric) ? lesson.assessmentRubric : [],
+    commonMistakes: Array.isArray(lesson.commonMistakes) ? lesson.commonMistakes : [],
+    requiredScore: Math.min(85, Math.max(70, Number(lesson.requiredScore) || 80)),
+  };
 }
 
 function getSourceMap(): Record<string, string> {
