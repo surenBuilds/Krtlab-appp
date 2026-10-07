@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useTranslation } from '../hooks/useTranslation';
 import { Briefcase, MapPin, DollarSign, Search, Sparkles, Building2, CheckCircle, Send, ArrowUpRight } from 'lucide-react';
 import { toast } from 'sonner';
+import { useUserProfile } from '../hooks/useUserProfile';
 
 interface JobOpportunity {
   id: string;
@@ -54,11 +55,21 @@ const INITIAL_JOBS: JobOpportunity[] = [
 
 export const CareerCenter: React.FC = () => {
   const { t } = useTranslation();
+  const { profile, updateProfile } = useUserProfile();
   const [jobs, setJobs] = useState<JobOpportunity[]>(INITIAL_JOBS);
   const [search, setSearch] = useState('');
-  const [appliedJobs, setAppliedJobs] = useState<string[]>([]);
+  const appliedJobs = profile?.appliedOpportunityIds || [];
 
-  const filteredJobs = jobs.filter(j => 
+  const learnerTokens = [
+    ...(profile?.strengths || []),
+    ...((profile?.skills || []) as any[]).map((s: any) => typeof s === 'string' ? s : s.id),
+  ].map(s => String(s).toLowerCase());
+  const jobsWithMatch = jobs.map(j => {
+    const required = j.skillsRequired.map(s => s.toLowerCase());
+    const matched = required.filter(skill => learnerTokens.some(token => token.includes(skill) || skill.includes(token))).length;
+    return { ...j, matchScore: required.length ? Math.round((matched / required.length) * 100) : 0 };
+  });
+  const filteredJobs = jobsWithMatch.filter(j => 
     j.title.toLowerCase().includes(search.toLowerCase()) ||
     j.company.toLowerCase().includes(search.toLowerCase()) ||
     j.skillsRequired.some(s => s.toLowerCase().includes(search.toLowerCase()))
@@ -66,8 +77,8 @@ export const CareerCenter: React.FC = () => {
 
   const handleApply = (id: string, title: string) => {
     if (appliedJobs.includes(id)) return;
-    setAppliedJobs(prev => [...prev, id]);
-    toast.success('Դիմումը հաջողությամբ ուղարկվեց:', {
+    updateProfile({ appliedOpportunityIds: [...appliedJobs, id] });
+    toast.success('Դիմումը պահպանվեց:', {
       description: `Ձեր ցմահ կրթական անձնագիրն ու սերտիֆիկատները կցվեցին ${title} հաստիքի համար:`
     });
   };
