@@ -76,7 +76,20 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
   }
 }
 
-const STORAGE_KEY = 'learnix_user_profile';
+const STORAGE_KEY_PREFIX = 'learnix_user_profile';
+const LEGACY_STORAGE_KEY = 'learnix_user_profile';
+
+function getStorageKey(uid?: string | null) {
+  return uid ? `${STORAGE_KEY_PREFIX}_${uid}` : `${STORAGE_KEY_PREFIX}_anonymous`;
+}
+function writeUserStorage(profile: UserProfile, uid?: string | null) {
+  localStorage.setItem(getStorageKey(uid || profile.uid || null), JSON.stringify(profile));
+}
+function recordXpEvent(profile: UserProfile, type: 'lesson' | 'quiz' | 'practice' | 'game' | 'project' | 'other', xp: number): UserProfile {
+  if (!xp || xp <= 0) return profile;
+  const event = { id: `xp-${Date.now()}-${typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)}`, type, xp, timestamp: new Date().toISOString() };
+  return { ...profile, xpHistory: [...(profile.xpHistory || []).slice(-199), event] };
+}
 
 const INITIAL_PROFILE: UserProfile = {
   name: '',
@@ -211,7 +224,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     if (profile) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+      writeUserStorage(profile);
       syncToFirestore(profile);
     }
   }, [profile, syncToFirestore]);
@@ -223,7 +236,20 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         try {
           const docSnap = await getDoc(userDocRef);
-          const localData = localStorage.getItem(STORAGE_KEY);
+          let localData = localStorage.getItem(getStorageKey(firebaseUser.uid));
+          if (!localData) {
+            const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+            if (legacy) {
+              try {
+                const legacyProfile = JSON.parse(legacy);
+                if (legacyProfile?.uid === firebaseUser.uid) {
+                  localStorage.setItem(getStorageKey(firebaseUser.uid), legacy);
+                  localStorage.removeItem(LEGACY_STORAGE_KEY);
+                  localData = legacy;
+                }
+              } catch {}
+            }
+          }
           let initialData = INITIAL_PROFILE;
           if (localData) {
             try { initialData = JSON.parse(localData); } catch (e) {}
@@ -252,7 +278,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             : { ...INITIAL_PROFILE, uid: firebaseUser.uid, email: firebaseUser.email || null, name: initialData.name || firebaseUser.displayName || '' };
           
           // Merge local if newer or more advanced
-          if (docSnap.exists() && initialData.xp > profileData.xp) {
+          if (docSnap.exists() && initialData.uid === firebaseUser.uid && initialData.xp > profileData.xp) {
             profileData = { ...profileData, ...initialData, uid: firebaseUser.uid };
           }
 
@@ -268,7 +294,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
           isSyncingFromFirestore.current = true;
           setProfile(profileData);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(profileData));
+          writeUserStorage(profileData);
           if (!docSnap.exists() || initialData.xp > (docSnap.data() as UserProfile).xp) {
             const sanitizedProfile = JSON.parse(JSON.stringify(profileData, (key, value) => 
               value === undefined ? null : value
@@ -291,21 +317,21 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             
             isSyncingFromFirestore.current = true;
             setProfile(firestoreData);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(firestoreData));
+            writeUserStorage(firestoreData);
           }
           setLoading(false);
         }, (error) => handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`));
 
         return () => unsubFirestore();
       } else {
-        const stored = localStorage.getItem(STORAGE_KEY);
+        const stored = localStorage.getItem(getStorageKey(null));
         if (stored) {
           try {
             const parsed = JSON.parse(stored);
             const { migrated, changed } = migrateProfile(parsed);
             setProfile(migrated);
             if (changed) {
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+              writeUserStorage(migrated);
             }
           } catch (e) {
             setProfile(INITIAL_PROFILE);
@@ -481,7 +507,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       const newLevel = Math.floor(newXP / 5000) + 2;
       if (newLevel > prev.level) toast.success(`Շնորհավորում ենք: Դուք հասաք ${newLevel}-րդ մակարդակի:`);
 
-      const nextProfile: UserProfile = { 
+      const nextProfile: UserProfile = recordXpEvent({ 
         ...prev, 
         xp: newXP, 
         level: newLevel, 
@@ -489,10 +515,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         streak: newStreak,
         lastStreakUpdate: updateStreakTime,
         lastActive: now.toISOString() 
-      };
+      }, stage === 'lesson' ? 'lesson' : stage === 'quiz' ? 'quiz' : stage === 'practice' ? 'practice' : stage === 'game' ? 'game' : 'other', score);
 
       setProfile(nextProfile);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextProfile));
+      writeUserStorage(nextProfile);
       syncToFirestoreNow(nextProfile).catch(() => {});
       
       // Recalculate the intelligence layer after every learning evidence event.
@@ -506,7 +532,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             mastery: (intelligenceState as any).canonicalMastery || nextProfile.mastery || [],
           };
           setProfile(withIntel);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(withIntel));
+          writeUserStorage(withIntel);
           syncToFirestoreNow(withIntel).catch(() => {});
         } catch (e) { /* non-critical */ }
       }
@@ -591,7 +617,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           skills: (intelligenceState as any).canonicalSkills || nextProfile.skills || [],
           mastery: (intelligenceState as any).canonicalMastery || nextProfile.mastery || [],
         };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(finalProfile));
+        writeUserStorage(finalProfile);
         syncToFirestoreNow(finalProfile).catch(() => {});
         return finalProfile;
       }
@@ -628,7 +654,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       
       if (newLevel > prev.level) toast.success(`Շնորհավորում ենք: Դուք հասաք ${newLevel}-րդ մակարդակի:`);
       
-      return { 
+      return recordXpEvent({ 
         ...prev, 
         xp: newXP, 
         level: newLevel, 
@@ -637,7 +663,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         gameHighScores: newHighScores,
         gameAdaptiveStats: newAdaptiveStats,
         lastActive: new Date().toISOString()
-      };
+      }, 'game', finalXPReward);
     });
   }, [calculateStreak]);
 
@@ -682,7 +708,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           mastery: (intelligenceState as any).canonicalMastery || nextProfile.mastery || [],
         };
       }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextProfile));
+      writeUserStorage(nextProfile);
       syncToFirestoreNow(nextProfile).catch(() => {});
       return nextProfile;
     });
@@ -704,17 +730,31 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const submitPracticeWork = useCallback(async (subfieldId: string, level: number, content: string, fileName?: string) => {
-    const score = content.length > 50 ? Math.floor(Math.random() * 31) + 70 : Math.floor(Math.random() * 41) + 40;
-    const passed = score >= 70;
-    const feedbackOptions = passed ? ["Հիանալի աշխատանք է!", "Լավ փորձ է:", "Ձեր մոտեցումը ստեղծարար է:"] : ["Այս անգամ բավարար չէր:", "Աշխատանքը թերի է:"];
-    const feedback = feedbackOptions[Math.floor(Math.random() * feedbackOptions.length)];
-    if (passed) {
-      updateProgress(subfieldId, subfieldId, level, level * 100); // Dummy categoryId for now or use actual if present
-      toast.success(`Նախագիծը հաստատվեց! +${level * 100} XP`);
-    } else {
-      toast.error("Աշխատանքը չի ընդունվել:");
+    if (!content.trim()) return { score: 0, feedback: "Աշխատանքը դատարկ է։", passed: false };
+    try {
+      const res = await fetch("/api/gemini/gradePractice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subfieldId, level, answer: content, fileName: fileName || null,
+          rubric: { relevance: "Համապատասխանություն առաջադրանքին", reasoning: "Հիմնավորում", completeness: "Լիարժեքություն", practicalApplication: "Գործնական կիրառություն" }
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Grading API failed (${res.status})`);
+      const score = Math.max(0, Math.min(100, Number(data.score) || 0));
+      const passed = Boolean(data.passed ?? score >= 70);
+      const feedback = String(data.feedback || "Աշխատանքը գնահատվեց։");
+      if (passed) {
+        updateProgress(subfieldId, subfieldId, level, score, 'practice');
+        toast.success(`Նախագիծը հաստատվեց։ +${score} XP`);
+      } else toast.error("Աշխատանքը դեռ չի անցել նվազագույն շեմը։");
+      return { score, feedback, passed, strengths: data.strengths || [], improvements: data.improvements || [] };
+    } catch (error) {
+      console.error("Practice grading error:", error);
+      toast.error("Գնահատումը ժամանակավորապես անհասանելի է։");
+      return { score: 0, feedback: "Գնահատումը չհաջողվեց։ Ձեր առաջընթացը չի փոխվել։", passed: false, error: true };
     }
-    return { score, feedback, passed };
   }, [updateProgress]);
 
   const activateGoal = useCallback((goal: string, categoryId: string) => {
@@ -835,7 +875,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
       setProfile(nextProfile);
       profileRef.current = nextProfile;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextProfile));
+      writeUserStorage(nextProfile);
       syncToFirestoreNow(nextProfile).catch(() => {});
 
       toast.success('Նպատակը վերածվեց անհատական զարգացման ճանապարհի։');
@@ -850,10 +890,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       if (!prev) return prev;
       const newXP = (prev.xp || 0) + amount;
       const newLevel = Math.floor(newXP / 5000) + 2;
-      if (newLevel > prev.level) {
-        toast.success(`Շնորհավորում ենք: Դուք հասաք ${newLevel}-րդ մակարդակի:`);
-      }
-      return { ...prev, xp: newXP, level: newLevel };
+      if (newLevel > prev.level) toast.success(`Շնորհավորում ենք: Դուք հասաք ${newLevel}-րդ մակարդակի:`);
+      return recordXpEvent({ ...prev, xp: newXP, level: newLevel }, 'other', amount);
     });
   }, []);
 
@@ -866,12 +904,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const updateIntelligenceState = useCallback((updates: Partial<IntelligenceState>) => {
     // STEP 1: Direct localStorage write (synchronous, immediate, survives stale React context)
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = localStorage.getItem(getStorageKey(auth.currentUser?.uid));
       if (stored) {
         const parsed = JSON.parse(stored);
         const cur = parsed.intelligenceState || { goals: [], skillBaseline: [], lastMission: null, lastNextAction: null, updatedAt: '' };
         parsed.intelligenceState = { ...cur, ...updates, updatedAt: new Date().toISOString() };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+        writeUserStorage(parsed);
       }
     } catch (e) { /* best-effort */ }
     
@@ -881,7 +919,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       const current = prev.intelligenceState || { goals: [], skillBaseline: [], lastMission: null, lastNextAction: null, updatedAt: '' };
       const next: IntelligenceState = { ...current, ...updates, updatedAt: new Date().toISOString() };
       const nextProfile = { ...prev, intelligenceState: next };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextProfile));
+      writeUserStorage(nextProfile);
       syncToFirestoreNow(nextProfile).catch(() => {});
       return nextProfile;
     });
@@ -896,12 +934,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       const sg = buildSkillGraph(profile as any);
       const dg = is.goals.map(g => ({ id: g.id, title: g.title, description: g.description, category: g.category as any, status: g.status, priority: g.priority, progress: g.progress, linkedSkillIds: g.linkedSkillIds, linkedProjectIds: [] as string[], linkedHabitIds: [] as string[], difficulty: g.difficulty, estimatedHours: g.estimatedHours, tasks: [] as any[], createdAt: g.createdAt, updatedAt: g.updatedAt }));
       const na = computeNextAction(sg, dg);
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = localStorage.getItem(getStorageKey(auth.currentUser?.uid));
       if (stored) {
         const parsed = JSON.parse(stored);
         const cur = parsed.intelligenceState || { goals: [], skillBaseline: [], lastMission: null, lastNextAction: null, updatedAt: '' };
         parsed.intelligenceState = { ...cur, skillBaseline: baseline, lastNextAction: { type: na.type, skillId: na.skillId, skillName: na.skillName, reason: na.reason, suggestedTask: na.suggestedTask, priority: na.priority, urgency: na.urgency }, updatedAt: new Date().toISOString() };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+        writeUserStorage(parsed);
       }
     } catch (e) { /* non-critical */ }
   }, [profile, syncToFirestoreNow]);

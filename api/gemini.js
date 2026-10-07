@@ -70,6 +70,29 @@ const handlers = {
     return await generateContent(`Դաստիարակ: Պատասխանիր հայերեն:\nԴաս:${lessonText}\n${hist}\nՀարց:${question}`);
   },
 
+  async gradePractice(body) {
+    const { answer, subfieldId, level, rubric } = body;
+    if (!answer || typeof answer !== "string") throw new Error("Practice answer is required");
+    const prompt = `Դու KrtLab-ի խիստ, բայց արդար գնահատող ես։
+Գնահատիր սովորողի գործնական աշխատանքը 0-100 սանդղակով։
+Ենթաոլորտ՝ ${subfieldId || "unknown"}; մակարդակ՝ ${level || 1}
+Պատասխան՝
+${answer}
+Չափանիշներ՝ ${JSON.stringify(rubric || {})}
+Վերադարձիր ՄԻԱՅՆ JSON՝ {"score":number,"passed":boolean,"feedback":"հայերեն","strengths":["..."],"improvements":["..."]}.
+passed=true միայն score >= 70-ի դեպքում։`;
+    try {
+      const parsed = JSON.parse(await generateContent(prompt, "application/json"));
+      const score = Math.max(0, Math.min(100, Number(parsed.score) || 0));
+      return { score, passed: score >= 70, feedback: String(parsed.feedback || ""), strengths: Array.isArray(parsed.strengths) ? parsed.strengths.slice(0,5) : [], improvements: Array.isArray(parsed.improvements) ? parsed.improvements.slice(0,5) : [] };
+    } catch {
+      const normalized = answer.trim();
+      const words = normalized.split(/\s+/).filter(Boolean).length;
+      const score = Math.max(0, Math.min(75, 25 + Math.min(35, Math.floor(normalized.length / 12)) + (/[.!?]/.test(normalized) ? 15 : 0) + (words >= 30 ? 25 : 10)));
+      return { score, passed: score >= 70, feedback: "AI գնահատումը ժամանակավորապես անհասանելի էր։ Կիրառվեց rubric-based fallback գնահատում։", strengths: [], improvements: score >= 70 ? [] : ["Ավելացրեք ավելի մանրամասն հիմնավորում և գործնական քայլեր։"] };
+    }
+  },
+
   async analyzeProgress(body) {
     const { quizScore } = body;
     return { status: quizScore >= 80 ? "pass" : "retry", quizScore };
@@ -100,7 +123,12 @@ const handlers = {
   },
   async generateLanguageGrammar(body) { return await generateContent(`Grammar lesson: ${body.language} ${body.level}`); },
   async generateStandaloneGame(body) { return await generateContent(`Educational game for ${body.topic} (${body.domain})`); },
-  async extractTermsFromLesson(body) { return await generateContent(`Extract 5 key terms from this lesson content`); },
+  async extractTermsFromLesson(body) {
+    const { lessonContent } = body;
+    if (!lessonContent) return [];
+    try { return await generateContent(`Extract 5 key terms from this lesson. Return JSON array only.\n${lessonContent}`, "application/json"); }
+    catch { return []; }
+  },
 };
 
 export default async function handler(req, res) {

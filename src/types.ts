@@ -240,6 +240,13 @@ export interface IntelligenceState {
   updatedAt: string;
 }
 
+export type XpEvent = {
+  id: string;
+  type: 'lesson' | 'quiz' | 'practice' | 'game' | 'project' | 'other';
+  xp: number;
+  timestamp: string;
+};
+
 export type UserProfile = {
   uid?: string;
   email?: string;
@@ -278,6 +285,7 @@ export type UserProfile = {
   level: number; // Overall level
   streak: number;
   activityHistory?: string[];
+  xpHistory?: XpEvent[];
   achievements: string[];
   flashcards?: Flashcard[];
   adaptiveProgress?: Record<string, ProgressAnalysis>; // lessonId -> analysis
