@@ -102,40 +102,49 @@ export const CourseMarketplace: React.FC = () => {
     });
   };
 
-  const handleAIGenerateCourse = (e: React.FormEvent) => {
+  const handleAIGenerateCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!aiPrompt.trim()) {
       toast.error('Մուտքագրեք թեման:');
       return;
     }
-
     setIsGenerating(true);
-    
-    // Simulate complex API generation
-    setTimeout(() => {
+    try {
+      const res = await fetch('/api/gemini?endpoint=generateCourse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic: aiPrompt.trim(), difficulty: aiDifficulty })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Course generation failed');
+      const lessons = Array.isArray(data.lessons) ? data.lessons : [];
+      if (!lessons.length) throw new Error('AI did not return usable lessons');
       const generated: CourseModel = {
         id: `ai_${Date.now()}`,
-        title: `AI: ${aiPrompt.charAt(0).toUpperCase() + aiPrompt.slice(1)}`,
-        description: `ԱԲ կողմից ավտոմատ գեներացված ինտերակտիվ դասընթաց '${aiPrompt}' թեմայով: Ներառում է ինտերակտիվ լաբեր, քվիզներ և հավաստագիր:`,
-        category: 'AI & Machine Learning',
-        lessonsCount: Math.floor(Math.random() * 8) + 8,
-        durationHours: Math.floor(Math.random() * 15) + 10,
+        title: data.title || aiPrompt.trim(),
+        description: data.description || `AI-generated course about ${aiPrompt.trim()}`,
+        category: data.category || 'AI Generated',
+        lessonsCount: lessons.length,
+        durationHours: Math.max(1, Math.ceil(lessons.reduce((sum: number, l: any) => sum + Math.max(10, String(l.content || '').split(/\\s+/).length / 2), 0) / 60)),
         difficulty: aiDifficulty,
         price: 0,
-        rating: 5.0,
+        rating: 0,
         creator: 'KrtLab AI Engine',
         isAIGenerated: true,
         isNew: true
       };
-
       setCourses(prev => [generated, ...prev]);
       setEnrolledCourses(prev => [...prev, generated.id]);
       setIsGenerating(false);
       setAiPrompt('');
-      toast.success('ԱԲ Դասընթացը հաջողությամբ գեներացվեց և ակտիվացավ ձեր էջում:', {
+      toast.success('AI դասընթացը իրականում գեներացվեց և ակտիվացվեց։', {
         icon: <Sparkles className="text-primary animate-pulse" />
       });
-    }, 2500);
+    } catch (error) {
+      console.error(error);
+      setIsGenerating(false);
+      toast.error('Դասընթացի գեներացումը չհաջողվեց։');
+    }
   };
 
   return (
