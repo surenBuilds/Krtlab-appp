@@ -1,5 +1,5 @@
 import { LEARNING_SOURCE_CATALOG, getLearningSources } from "../../../src/data/learningSources";
-import { getAcademicLiterature, mergeAcademicLiterature } from "../../../src/data/academicLiterature";
+import { getAcademicLiterature, mergeAcademicLiterature } from "../../../src/data/academicLiteratureOverrides";
 /**
  * Gemini Learning Service
  */
