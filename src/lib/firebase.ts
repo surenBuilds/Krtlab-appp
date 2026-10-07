@@ -1,14 +1,11 @@
 import { initializeApp } from 'firebase/app';
-import { 
-  getAuth, 
-  GoogleAuthProvider, 
-  signInWithPopup, 
-  signOut, 
-  signInWithEmailAndPassword, 
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut,
+  signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  fetchSignInMethodsForEmail,
-  linkWithCredential,
-  EmailAuthProvider
 } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
@@ -21,14 +18,11 @@ export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId || '(defa
 
 async function validateConnection() {
   if (typeof window === 'undefined') return;
-  
+
   try {
-    // This is a simple connection test that forces a fetch from the server.
-    // If it fails with "the client is offline", there's a configuration issue.
-    // Use a small timeout or just log errors.
     console.log("Verifying Firestore connection...");
     await getDocFromServer(doc(db, '_connection_test_', 'check')).catch(() => {
-      // Ignore document not found errors, we only care about connectivity
+      // Ignore document not found errors; we only care about connectivity.
     });
     console.log("Firestore connection successfully verified.");
   } catch (error) {
@@ -38,27 +32,35 @@ async function validateConnection() {
   }
 }
 
-// Only run validation in transition to idle or after a short delay to not block main thread
 if (typeof window !== 'undefined') {
   setTimeout(validateConnection, 1000);
 }
 
 export const googleProvider = new GoogleAuthProvider();
 
+// Always show Google's account chooser so users can select the account
+// they want to use for their KrtLab profile.
+googleProvider.setCustomParameters({
+  prompt: 'select_account',
+});
+
 export const signInWithGoogle = async () => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
   } catch (error: any) {
-    if (error.code === 'auth/account-exists-with-different-credential') {
-      // Handle account linking if needed, but Firebase usually handles this if configured.
-      // For now, we'll just re-throw or handle it in the UI.
-      console.error("Account exists with different credential", error);
-    }
+    console.error('Google sign-in failed:', {
+      code: error?.code,
+      message: error?.message,
+    });
     throw error;
   }
 };
 
-export const loginWithEmail = (email: string, pass: string) => signInWithEmailAndPassword(auth, email, pass);
-export const registerWithEmail = (email: string, pass: string) => createUserWithEmailAndPassword(auth, email, pass);
+export const loginWithEmail = (email: string, pass: string) =>
+  signInWithEmailAndPassword(auth, email, pass);
+
+export const registerWithEmail = (email: string, pass: string) =>
+  createUserWithEmailAndPassword(auth, email, pass);
+
 export const logout = () => signOut(auth);

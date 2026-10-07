@@ -125,7 +125,7 @@ const INITIAL_PROFILE: UserProfile = {
 interface UserContextType {
   profile: UserProfile | null;
   updateProfile: (updates: Partial<UserProfile>) => void;
-  updateProgress: (categoryId: string, subfieldId: string, levelId: number, score?: number, stepType?: 'lesson' | 'practice' | 'game') => void;
+  updateProgress: (categoryId: string, subfieldId: string, levelId: number, score?: number, stepType?: 'lesson' | 'quiz' | 'practice' | 'game' | 'complete') => void;
   updateAdaptiveProgress: (lessonId: string, analysis: any) => void;
   addFlashcards: (newCards: { term: string; definition: string }[]) => void;
   updateFlashcardSRS: (cardId: string, srsData: any) => void;
@@ -463,11 +463,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       }
       changed = true;
     } else if (stage === 'complete') {
-      status.lesson = true;
-      status.quiz = true;
-      status.practice = true;
-      status.game = true;
-      changed = true;
+      // A lesson is complete only after the required learning loop:
+      // theory/read -> quiz/exercise -> practical application.
+      // Games/simulations are enrichment and must not be required to unlock the next lesson.
+      if (status.lesson && status.quiz && status.practice) {
+        status.isFullyCompleted = true;
+        changed = true;
+      }
     }
 
     if (changed) {
@@ -481,11 +483,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         subfieldProgress.accuracy = Math.round(((subfieldProgress.accuracy || 0) * (totalSteps - 1) + score) / totalSteps);
       }
       
-      const isCurrentLevelFullyComplete = 
-        status.lesson && 
-        status.quiz && 
-        status.practice && 
-        status.game;
+      const isCurrentLevelFullyComplete =
+        status.lesson &&
+        status.quiz &&
+        status.practice;
 
       if (isCurrentLevelFullyComplete && !status.isFullyCompleted) {
         status.isFullyCompleted = true;

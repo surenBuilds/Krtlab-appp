@@ -314,6 +314,17 @@ export const useLessonStore = () => {
       if (cached && !forceRefresh) {
         try {
           const parsed = JSON.parse(cached);
+          // Invalidate stale lesson caches created before the quiz schema was fixed.
+          // A lesson is not reusable unless it contains a real 5-question quiz.
+          const hasValidQuiz = Array.isArray(parsed?.quiz) && parsed.quiz.length >= 5 &&
+            parsed.quiz.every((q: any) =>
+              q && typeof q.question === 'string' &&
+              Array.isArray(q.options) && q.options.length === 4 &&
+              Number.isInteger(q.correctAnswer) && q.correctAnswer >= 0 && q.correctAnswer < 4
+            );
+          if (!hasValidQuiz) {
+            localStorage.removeItem(lessonId);
+          } else {
           const state = {
             lessonId,
             content: parsed,
@@ -325,6 +336,7 @@ export const useLessonStore = () => {
           setLessons(prev => ({ ...prev, [lessonId]: state }));
           loadingRef.current[lessonId] = false;
           return state;
+          }
         } catch (e) {
           localStorage.removeItem(lessonId);
         }
@@ -337,6 +349,15 @@ export const useLessonStore = () => {
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
             const data = docSnap.data() as Lesson;
+            const hasValidQuiz = Array.isArray(data?.quiz) && data.quiz.length >= 5 &&
+              data.quiz.every((q: any) =>
+                q && typeof q.question === 'string' &&
+                Array.isArray(q.options) && q.options.length === 4 &&
+                Number.isInteger(q.correctAnswer) && q.correctAnswer >= 0 && q.correctAnswer < 4
+              );
+            if (!hasValidQuiz) {
+              // Ignore stale Firestore lessons and regenerate them with the current schema.
+            } else {
             localStorage.setItem(lessonId, JSON.stringify(data));
             const state = {
               lessonId,
@@ -349,6 +370,7 @@ export const useLessonStore = () => {
             setLessons(prev => ({ ...prev, [lessonId]: state }));
             loadingRef.current[lessonId] = false;
             return state;
+            }
           }
         } catch (error) {
           handleFirestoreError(error, OperationType.GET, `lessons/${lessonId}`);

@@ -363,8 +363,8 @@ export const LearningModule: React.FC<LearningModuleProps> = ({
   };
 
   const handleTaskComplete = () => {
-    // Mark task as completed
-    updateProgress(categoryId, subfieldId, levelId, 100, 'practice');
+    // The task screen is the practical briefing. Do not mark practice complete
+    // until the learner actually submits/finishes the practical application.
     setStep('practice');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -377,8 +377,8 @@ export const LearningModule: React.FC<LearningModuleProps> = ({
       // Small delay for saving effect
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Update progress marking game as done
-      updateProgress(categoryId, subfieldId, levelId, 100, 'game');
+      // Practical application passed. This is the required completion gate.
+      updateProgress(categoryId, subfieldId, levelId, 100, 'practice');
       
       setPracticeSubmission(true);
       setIsPracticeSubmitting(false);
@@ -404,8 +404,8 @@ export const LearningModule: React.FC<LearningModuleProps> = ({
   const handleGamesComplete = (totalGameScore: number) => {
     console.log("Games complete with score:", totalGameScore);
     
-    // Part 4: Track Step Progress - GAME (Final step)
-    updateProgress(categoryId, subfieldId, levelId, totalGameScore, 'game');
+    // Games are enrichment; the required practical gate is recorded separately.
+    updateProgress(categoryId, subfieldId, levelId, totalGameScore, 'practice');
     
     // Mastery for games - same logic as scenario
     const mastery = Math.round((quizScore + totalGameScore) / 2);
@@ -832,7 +832,7 @@ export const LearningModule: React.FC<LearningModuleProps> = ({
                   className="group relative px-12 py-4 bg-accent text-white rounded-2xl font-black text-lg transition-all hover:-translate-y-1 hover:shadow-[0_8px_0_0_#9a3412] active:translate-y-1 active:shadow-none"
                 >
                   <span className="flex items-center gap-2">
-                    Անցնել Ինտերակտիվ Խաղին
+                    Անցնել Պրակտիկային
                     <ChevronRight className="transition-transform group-hover:translate-x-1" />
                   </span>
                 </button>
@@ -1244,23 +1244,42 @@ const PracticeLabViewer = ({ task, onComplete }: { task: PracticeLabTask, onComp
 
   const currentStep = task.steps[currentIdx];
 
-  const handleEvaluate = () => {
+  const handleEvaluate = async () => {
     if (!userAnswer.trim() || isEvaluating) return;
     setIsEvaluating(true);
-
-    const expected = currentStep.expectedOutcome.toLowerCase();
-    const isCorrect = userAnswer.toLowerCase().includes(expected) || userAnswer.length > (expected.length * 0.8);
-
-    setTimeout(() => {
-      setEvaluation({
-        isCorrect,
-        feedback: isCorrect 
-          ? "Հիանալի է: Դուք ճիշտ որոշում կայացրեցիք:" 
-          : `Մասնակի ճիշտ է։ Կարևոր էր հաշվի առնել հետևյալը՝ ${currentStep.expectedOutcome}`
+    try {
+      const res = await fetch('/api/gemini?endpoint=gradePractice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subfieldId: 'lesson-practice',
+          level: currentIdx + 1,
+          answer: userAnswer,
+          rubric: {
+            task: currentStep.description,
+            question: currentStep.question,
+            expectedOutcome: currentStep.expectedOutcome,
+            criteria: 'Ճշտություն, հիմնավորում, ամբողջականություն և գործնական կիրառելիություն'
+          }
+        })
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Practice grading failed');
+      const score = Math.max(0, Math.min(100, Number(data.score) || 0));
+      setEvaluation({
+        isCorrect: score >= 70,
+        feedback: data.feedback || (score >= 70 ? 'Գործնական աշխատանքը ընդունվեց։' : 'Ավելացրեք հիմնավորում և կիրառական մանրամասներ։')
+      });
+      if (score >= 70) setPoints(prev => prev + Math.round(score / 5));
+    } catch (error) {
+      console.error('Practice evaluation failed:', error);
+      setEvaluation({
+        isCorrect: false,
+        feedback: 'Գնահատումը ժամանակավորապես անհասանելի է։ Փորձեք կրկին ուղարկել պատասխանը։'
+      });
+    } finally {
       setIsEvaluating(false);
-      if (isCorrect) setPoints(prev => prev + 20);
-    }, 1000);
+    }
   };
 
   const handleNext = () => {
