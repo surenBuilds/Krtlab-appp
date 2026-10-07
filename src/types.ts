@@ -312,6 +312,8 @@ export type UserProfile = {
   labXp?: number;
   labStreak?: number;
   intelligenceState?: IntelligenceState;
+  appliedOpportunityIds?: string[];
+  enrolledCourseIds?: string[];
 }
 
 export type PracticeSubmission = {
