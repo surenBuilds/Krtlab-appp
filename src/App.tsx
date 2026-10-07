@@ -1372,10 +1372,10 @@ const NavItem = ({ active, onClick, icon, label }: { active: boolean, onClick: (
   <button
     onClick={onClick}
     className={cn(
-      "w-full flex items-center gap-3 px-5 py-2.5 rounded-xl font-black transition-all relative group text-xs cursor-pointer",
+      "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all relative group text-xs cursor-pointer",
       active 
-        ? "bg-slate-100 text-slate-900 border-l-4 border-slate-900" 
-        : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+        ? "bg-white/10 text-white shadow-lg shadow-black/10 border border-white/10" 
+        : "text-white/45 hover:bg-white/[0.06] hover:text-white/85"
     )}
   >
     <span className={cn("transition-transform duration-300", active ? "scale-110 text-primary" : "group-hover:scale-110")}>
