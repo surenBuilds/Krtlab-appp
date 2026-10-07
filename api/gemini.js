@@ -45,6 +45,22 @@ const handlers = {
     return { text };
   },
 
+  async generateCourse(body) {
+    const { topic, difficulty } = body;
+    if (!topic || typeof topic !== "string") throw new Error("Course topic is required");
+    const prompt = `Ստեղծիր KrtLab-ի համար ${difficulty || "Beginner"} մակարդակի հայերեն ուսումնական կուրս «${topic}» թեմայով։
+Վերադարձիր ՄԻԱՅՆ JSON՝ {"title":"...","description":"...","category":"...","lessons":[{"title":"...","objective":"...","content":"...","quiz":[{"question":"...","options":["...","...","...","..."],"correctAnswer":0}],"practicalTask":"..."}]}։
+Ստեղծիր 6-10 իրար հաջորդող դաս՝ սկսելով հիմունքներից և ավարտելով կիրառական նախագծով։`;
+    const text = await generateContent(prompt, "application/json");
+    try {
+      const parsed = JSON.parse(text);
+      const lessons = Array.isArray(parsed.lessons) ? parsed.lessons.filter(l => l && l.title && l.content) : [];
+      return { title: parsed.title || topic, description: parsed.description || `AI-generated course about ${topic}`, category: parsed.category || "AI Generated", lessons };
+    } catch {
+      throw new Error("AI returned invalid course JSON");
+    }
+  },
+
   async generateLessonContent(body) {
     const { category, subfield, level, currentTopic } = body;
     const prompt = `Ստեղծիր հայերեն դաս "${subfield}" (մակ.${level}): Թեմա: ${currentTopic || subfield}. JSON: {"title":"...","introduction":"...","keyConcepts":["..."],"miniSummary":"..."}. ՄԻԱՅՆ JSON:`;
