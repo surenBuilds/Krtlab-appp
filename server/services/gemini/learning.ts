@@ -1,4 +1,5 @@
 import { LEARNING_SOURCE_CATALOG, getLearningSources } from "../../../src/data/learningSources";
+import { getAcademicLiterature, mergeAcademicLiterature } from "../../../src/data/academicLiterature";
 /**
  * Gemini Learning Service
  */
@@ -40,6 +41,13 @@ export async function generateLessonContent(params: any): Promise<any> {
     category, subfield, level, literature, previousLessons = [], currentTopic, topicIndex, curriculum = []
   } = params;
 
+  const academicLiterature = getAcademicLiterature(String(category), String(subfield), String(currentTopic || subfield));
+  const mergedLiterature = mergeAcademicLiterature(
+    String(category),
+    String(subfield),
+    String(currentTopic || subfield),
+    literature
+  );
   const sources = getLearningSources(category, subfield);
   const phase = level <= 4 ? "Foundation" : level <= 8 ? "Core concepts" : level <= 12 ? "Applied practice" : level <= 16 ? "Advanced application" : "Integration and capstone";
   const curriculumText = curriculum.length ? curriculum.map((t: string, i: number) => `${i + 1}. ${t}`).join("\n") : currentTopic || subfield;
@@ -57,11 +65,14 @@ TOPIC INDEX: ${topicIndex ?? level - 1}
 COURSE CURRICULUM:
 ${curriculumText}
 
-RECOMMENDED SOURCES:
-${sources}
+ACADEMIC LITERATURE — PRIORITIZE THESE:
+${JSON.stringify(academicLiterature)}
 
-RECOMMENDED LITERATURE:
-${JSON.stringify(literature || {})}
+MERGED LITERATURE CATALOG:
+${JSON.stringify(mergedLiterature)}
+
+RECOMMENDED UNIVERSITY / PROFESSIONAL SOURCES:
+${sources}
 
 RECENT LESSONS:
 ${previousText || "None"}
@@ -70,14 +81,16 @@ QUALITY RULES:
 1. Teach one clearly bounded learning objective at this level.
 2. Progress from prerequisite knowledge to application; never assume mastery of later concepts.
 3. Use precise terminology and concrete examples appropriate to the domain.
-4. Do not invent facts, statistics, standards, laws, citations, URLs, book details, or named frameworks. If a claim cannot be supported by the supplied sources or established knowledge, omit it or mark it as an example/assumption.
-5. Do not repeat previous lessons except for deliberate prerequisite review.
-6. Exercises must test the stated objective. Practical work must produce a verifiable deliverable.
-7. Quiz must test understanding and application, not only recall. Include exactly 5 questions with 4 options each and one correct answer index.
-8. Include an evaluation rubric with observable criteria.
-9. Set requiredScore between 70 and 85; do not mark a learner as mastered from lesson completion alone.
-10. All learner-facing content must be in Armenian. Technical terms may include their standard English term in parentheses.
-11. Return valid JSON only.
+4. Treat the supplied academic literature as the knowledge foundation. Do not invent book titles, authors, universities, citations, statistics, standards, laws, URLs, or named frameworks.
+5. Prefer works written by established university researchers/professors and primary academic sources where appropriate. Do not imply a professor affiliation unless it is explicitly supplied in the catalog.
+6. Do not repeat previous lessons except for deliberate prerequisite review.
+7. Exercises must test the stated objective. Practical work must produce a verifiable deliverable.
+8. Quiz must test understanding and application, not only recall. Include exactly 5 questions with 4 options each and one correct answer index.
+9. Include an evaluation rubric with observable criteria.
+10. Set requiredScore between 70 and 85; do not mark a learner as mastered from lesson completion alone.
+11. All learner-facing content must be in Armenian. Technical terms may include their standard English term in parentheses.
+12. recommendedReading MUST contain 3–6 books from the supplied academic literature, matched to this lesson's topic. Do not invent additional books.
+13. Return valid JSON only.
 
 Return this exact structure:
 {
@@ -111,17 +124,42 @@ Return this exact structure:
 
   try {
     const parsed = JSON.parse(response.text || "{}");
-    return normalizeLesson(parsed, category, subfield, level, currentTopic, topicIndex);
+    return normalizeLesson(parsed, category, subfield, level, currentTopic, topicIndex, mergedLiterature);
   } catch {
-    return getFallbackLesson(category, subfield, level, currentTopic, topicIndex);
+    return getFallbackLesson(category, subfield, level, currentTopic, topicIndex, mergedLiterature);
   }
 }
 
-function normalizeLesson(lesson: any, category: string, subfield: string, level: number, topic?: string, idx?: number) {
+function normalizeLesson(
+  lesson: any,
+  category: string,
+  subfield: string,
+  level: number,
+  topic?: string,
+  idx?: number,
+  literature?: any
+) {
   const quiz = Array.isArray(lesson.quiz) ? lesson.quiz.filter((q: any) =>
     q && typeof q.question === "string" && Array.isArray(q.options) && q.options.length === 4 &&
     Number.isInteger(q.correctAnswer) && q.correctAnswer >= 0 && q.correctAnswer < 4
   ).slice(0, 5) : [];
+
+  const allowedBooks = [
+    ...(literature?.beginner || []),
+    ...(literature?.intermediate || []),
+    ...(literature?.advanced || [])
+  ];
+  const allowedKeys = new Set(allowedBooks.map((b: any) => `${b.title}::${b.author}`.toLowerCase()));
+  const aiReading = Array.isArray(lesson.recommendedReading)
+    ? lesson.recommendedReading.filter((b: any) =>
+        b && typeof b.title === "string" && typeof b.author === "string" &&
+        allowedKeys.has(`${b.title}::${b.author}`.toLowerCase())
+      )
+    : [];
+  const fallbackReading = allowedBooks.slice(0, 6);
+  const recommendedReading = [...aiReading, ...fallbackReading].filter((book, index, arr) =>
+    arr.findIndex(b => `${b.title}::${b.author}`.toLowerCase() === `${book.title}::${book.author}`.toLowerCase()) === index
+  ).slice(0, 6);
 
   return {
     ...lesson,
@@ -135,7 +173,7 @@ function normalizeLesson(lesson: any, category: string, subfield: string, level:
     keyConcepts: Array.isArray(lesson.keyConcepts) ? lesson.keyConcepts : [],
     examples: Array.isArray(lesson.examples) ? lesson.examples : [],
     exercises: Array.isArray(lesson.exercises) ? lesson.exercises : [],
-    recommendedReading: Array.isArray(lesson.recommendedReading) ? lesson.recommendedReading : [],
+    recommendedReading,
     quiz,
     practicalTask: lesson.practicalTask || { title: "Գործնական առաջադրանք", scenario: "", instructions: [], deliverable: "", evaluationCriteria: [] },
     assessmentRubric: Array.isArray(lesson.assessmentRubric) ? lesson.assessmentRubric : [],
@@ -144,10 +182,28 @@ function normalizeLesson(lesson: any, category: string, subfield: string, level:
   };
 }
 
-function getSourceMap(): Record<string, string> {
-  return { entrepreneurship: "Y Combinator, HBR, Lean Startup", marketing: "HubSpot, Google Digital Garage, Kotler", sales: "SPIN Selling, Dale Carnegie", python: "Python Docs, fast.ai", javascript: "MDN, freeCodeCamp", ai: "Andrew Ng, fast.ai, HuggingFace", cybersecurity: "OWASP, NIST", finance: "Investopedia, CFI", crypto: "Ethereum.org, Binance Academy" };
-}
-
-function getFallbackLesson(cat: string, sub: string, lvl: number, topic?: string, idx?: number) {
-  return { title: topic || `${sub} - Level ${lvl}`, topicId: topic?.toLowerCase().replace(/\s+/g,"-") || `topic-${lvl}`, topicName: topic || `Topic ${lvl}`, orderIndex: idx || lvl, introduction: `Բարի գալուստ:`, keyConcepts: ["Հիմունքներ"], detailedExplanation: `Սա ${sub} թեմայի դաս է:`, examples: ["Օրինակ 1"], exercises: ["Վարժություն 1"], miniSummary: "Ամփոփում:", recommendedReading: [], quiz: [{ question: "Հարց", options: ["A","B","C","D"], correctAnswer: 0 }], practicalTask: { title: "Առաջադրանք", scenario: "", instructions: "", deliverable: "", evaluationCriteria: "" }, game: { title: "Խաղ", scenario: "", player_role: "", steps: [] }, completion: { message: "Շնորհավոր:", total_xp: 100 }, requiredScore: 100 };
+function getFallbackLesson(cat: string, sub: string, lvl: number, topic?: string, idx?: number, literature?: any) {
+  const books = [
+    ...(literature?.beginner || []),
+    ...(literature?.intermediate || []),
+    ...(literature?.advanced || [])
+  ].slice(0, 6);
+  return {
+    title: topic || `${sub} - Level ${lvl}`,
+    topicId: topic?.toLowerCase().replace(/\s+/g,"-") || `topic-${lvl}`,
+    topicName: topic || `Topic ${lvl}`,
+    orderIndex: idx || lvl,
+    introduction: `Բարի գալուստ ${sub} ոլորտի դասընթաց:`,
+    keyConcepts: ["Հիմունքներ"],
+    detailedExplanation: `Սա ${sub} թեմայի դաս է:`,
+    examples: ["Օրինակ 1"],
+    exercises: ["Վարժություն 1"],
+    miniSummary: "Ամփոփում:",
+    recommendedReading: books,
+    quiz: [{ question: "Հարց", options: ["A","B","C","D"], correctAnswer: 0 }],
+    practicalTask: { title: "Առաջադրանք", scenario: "", instructions: "", deliverable: "", evaluationCriteria: "" },
+    game: { title: "Խաղ", scenario: "", player_role: "", steps: [] },
+    completion: { message: "Շնորհավոր:", total_xp: 100 },
+    requiredScore: 100
+  };
 }
