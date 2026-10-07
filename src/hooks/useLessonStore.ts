@@ -391,7 +391,8 @@ export const useLessonStore = () => {
       // 6. Save to Cache & Lock
       localStorage.setItem(lessonId, JSON.stringify(content));
       if (auth.currentUser) {
-        setDoc(doc(db, 'lessons', lessonId), content).catch(error => {
+        const cacheData = { ...content, createdBy: auth.currentUser.uid, updatedAt: new Date().toISOString() };
+        setDoc(doc(db, 'lessons', lessonId), cacheData).catch(error => {
           handleFirestoreError(error, OperationType.WRITE, `lessons/${lessonId}`);
         });
       }
