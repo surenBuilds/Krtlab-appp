@@ -186,7 +186,13 @@ function estimateDimension(dim: MasteryDimension, skill: LearnerSkill, _prev?: S
     case "application": return Math.min(100, Math.max(0, s - 10) + (skill.evidence?.length || 0) * 3);
     case "transfer": return Math.min(100, Math.max(0, s - 15) + (skill.hoursInvested || 0));
     case "creation": return Math.min(100, Math.max(0, s - 20) + ((skill.evidence?.filter(e => e.source === "project").length || 0) * 10));
-    case "retention": return Math.min(100, s + Math.random() * 5); // TODO: real retention calc
+    case "retention": {
+      const last = skill.lastPracticed ? new Date(skill.lastPracticed).getTime() : 0;
+      const days = last ? Math.max(0, (Date.now() - last) / 86400000) : 30;
+      const decay = Math.min(35, days * 2.5);
+      const reviewBonus = skill.evidence?.filter(ev => ev.source === "lesson" || ev.source === "quiz").length ? 8 : 0;
+      return Math.min(100, Math.max(0, s + reviewBonus - decay));
+    }
   }
 }
 
@@ -270,12 +276,13 @@ export function generateDailyMission(goals: LearnerGoal[], nextAction: NextActio
   ];
 
   const quotes = ["Փոքր քայլեր, մեծ արդյունք:", "Ամեն օր մի փոքր ավելի լավը:", "Սովորելը ճանապարհ է:", "Քո ապագան սկսվում է այսօր:"];
+  const dayIndex = Math.floor(Date.now() / 86400000) % quotes.length;
 
   return {
     date: new Date().toISOString().split("T")[0],
     goalTitle: activeGoal?.title || "Personal Growth",
     tasks,
-    quote: quotes[Math.floor(Math.random() * quotes.length)],
+    quote: quotes[dayIndex],
     completed: false,
   };
 }
