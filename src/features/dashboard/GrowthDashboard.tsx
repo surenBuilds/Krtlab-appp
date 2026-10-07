@@ -31,8 +31,23 @@ export const GrowthDashboard: React.FC = () => {
   }, [profile]);
 
   const xpChartData = useMemo(() => {
-    return ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((day, i) => ({ day, xp: profile?.xp ? Math.round((profile.xp/7)*(i+1)*(0.7+Math.random()*0.6)) : i*50 }));
-  }, [profile?.xp]);
+    const now = new Date();
+    const history = profile?.xpHistory || [];
+    return Array.from({ length: 7 }, (_, index) => {
+      const day = new Date(now);
+      day.setHours(0, 0, 0, 0);
+      day.setDate(now.getDate() - (6 - index));
+      const nextDay = new Date(day);
+      nextDay.setDate(day.getDate() + 1);
+      const xp = history
+        .filter(event => {
+          const ts = new Date(event.timestamp);
+          return ts >= day && ts < nextDay;
+        })
+        .reduce((sum, event) => sum + Math.max(0, Number(event.xp) || 0), 0);
+      return { day: day.toLocaleDateString("hy-AM", { weekday: "short" }), xp };
+    });
+  }, [profile?.xpHistory]);
 
   const growthScore = useMemo(() => profile ? calculateGrowthScore({ profile: gp, skills: [], goals: [], projects: [], habits: [{ currentStreak: gp?.streak || 0 }] }) : 0, [profile, gp]);
 
