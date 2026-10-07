@@ -311,18 +311,21 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900">
+    <div className="min-h-screen bg-[#f6f8fc] flex font-sans text-slate-900 selection:bg-violet-200 selection:text-violet-950">
       <Toaster position="top-center" richColors />
       {/* Sidebar - Desktop */}
       <aside className={cn(
-        "hidden lg:flex flex-col w-72 bg-white border-r border-slate-200 sticky top-0 h-screen transition-opacity",
+        "hidden lg:flex flex-col w-[260px] bg-[#0b1020] text-white sticky top-0 h-screen transition-opacity shadow-[18px_0_50px_-35px_rgba(15,23,42,0.55)] z-40",
         activeLevel && "opacity-50 pointer-events-none grayscale"
       )}>
-        <div className="p-8">
-          <Logo size="md" />
+        <div className="px-6 pt-7 pb-5">
+          <div className="rounded-3xl bg-white/[0.06] border border-white/10 p-4 backdrop-blur-xl">
+            <Logo size="md" />
+            <p className="mt-3 text-[10px] font-bold tracking-[0.18em] uppercase text-white/35">Personal Growth OS</p>
+          </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto max-h-[calc(100vh-240px)] scrollbar-none px-4 space-y-1.5 pb-6">
+        <nav className="flex-1 overflow-y-auto max-h-[calc(100vh-240px)] scrollbar-none px-3 space-y-1 pb-6">
           <div className="px-3 py-1 text-[9px] font-black tracking-widest text-slate-400 uppercase">
             {t('nav.core')}
           </div>
@@ -477,7 +480,7 @@ export default function App() {
           {user && (
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-6 py-5 rounded-[1.5rem] font-black transition-all text-red-500 hover:bg-red-50"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-red-300/80 hover:bg-red-500/10 hover:text-red-200"
             >
               <LogOut size={20} />
               <span>Դուրս գալ</span>
@@ -485,7 +488,7 @@ export default function App() {
           )}
         </nav>
 
-        <div className="p-6 border-t border-slate-100">
+        <div className="p-4 border-t border-white/10">
           <div className="flex flex-col gap-4">
             {(isAdmin || isTeacher) && (
               <button 
@@ -493,8 +496,8 @@ export default function App() {
                 className={cn(
                   "flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all group",
                   profile?.isDemoMode 
-                    ? "bg-amber-500/10 border-amber-500 text-amber-600 shadow-lg shadow-amber-200/50" 
-                    : "bg-slate-50 border-slate-100 text-slate-400 hover:border-slate-200"
+                    ? "bg-amber-400/10 border-amber-400/30 text-amber-300 shadow-lg shadow-amber-950/20" 
+                    : "bg-white/[0.04] border-white/10 text-white/45 hover:border-white/20 hover:text-white/70"
                 )}
               >
                 <div className="flex items-center gap-2">
@@ -512,18 +515,18 @@ export default function App() {
                 </div>
               </button>
             )}
-            <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50">
+            <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.05] border border-white/10">
               <div className="w-10 h-10 rounded-xl bg-gradient-brand flex items-center justify-center text-white font-bold shadow-lg shadow-primary/20">
                 {profile?.name ? profile.name[0].toUpperCase() : '?'}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold truncate">{profile?.name || 'Օգտատեր'}</p>
+                <p className="text-sm font-extrabold truncate text-white">{profile?.name || 'Օգտատեր'}</p>
                 <div className="flex items-center gap-1.5">
                   <span className={cn(
                     "w-2 h-2 rounded-full",
                     profile?.role === 'admin' ? "bg-red-400" : profile?.role === 'teacher' ? "bg-purple-400" : "bg-emerald-400"
                   )} />
-                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-none">
+                  <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest leading-none">
                     {profile?.role === 'admin' ? 'Ադմին' : profile?.role === 'teacher' ? 'Ուսուցիչ' : 'Աշակերտ'}
                   </p>
                 </div>
@@ -537,7 +540,7 @@ export default function App() {
       <main className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <header className={cn(
-          "h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 px-6 flex items-center justify-between transition-opacity",
+          "h-[76px] bg-white/75 backdrop-blur-2xl border-b border-slate-200/70 sticky top-0 z-30 px-6 lg:px-10 flex items-center justify-between transition-opacity",
           activeLevel && "opacity-50 pointer-events-none"
         )}>
           <div className="flex items-center gap-4">
@@ -612,7 +615,7 @@ export default function App() {
           </button>
         </header>
 
-        <div className="p-6 lg:p-10 max-w-7xl mx-auto w-full">
+        <div className="px-5 py-7 lg:px-10 lg:py-9 max-w-[1500px] mx-auto w-full">
           <AnimatePresence mode="wait">
             {activeTab === 'command-center' && <CommandCenter />}
             {activeTab === 'dashboard' && (
@@ -622,10 +625,21 @@ export default function App() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
               >
-                <div className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+                <div className="mb-8 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
                   <div>
-                    <h2 className="text-4xl font-black text-slate-900 tracking-tight">{t('dashboard.welcome')}, {profile?.name || 'Օգտատեր'}</h2>
-                    <p className="text-slate-500 font-medium mt-1">{t('dashboard.welcomeSub')}</p>
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-50 border border-violet-100 text-violet-700 text-[10px] font-black uppercase tracking-[0.16em] mb-4">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Your growth system
+                    </div>
+                    <h2 className="text-4xl lg:text-5xl font-black text-slate-950 tracking-[-0.04em] leading-[1.05]">{t('dashboard.welcome')}, {profile?.name || 'Օգտատեր'}</h2>
+                    <p className="text-slate-500 font-medium mt-3 max-w-xl">{t('dashboard.welcomeSub')} <span className="text-slate-800 font-bold">Այսօր մեկ փոքր քայլը բավական է առաջ շարժվելու համար։</span></p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => setActiveTab('learn')} className="group inline-flex items-center gap-2.5 px-5 py-3.5 rounded-2xl bg-slate-950 text-white font-extrabold shadow-xl shadow-slate-900/10 hover:-translate-y-0.5 transition-all">
+                      <Rocket size={17} className="text-cyan-300 group-hover:-translate-y-0.5 transition-transform" />
+                      Շարունակել սովորելը
+                      <ChevronRight size={16} className="opacity-50 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
                   </div>
                 </div>
 
@@ -640,15 +654,25 @@ export default function App() {
                   />
 
                   <div className="pt-10 border-t border-slate-100">
-                    <div className="bg-slate-900 border-2 border-slate-800 rounded-[2.5rem] p-8 text-left group hover:border-primary transition-all relative overflow-hidden mb-10">
-                      <div className="absolute top-0 right-0 p-8 opacity-10">
-                        <BrainCircuit size={80} className="text-primary" />
-                      </div>
-                      <div className="w-14 h-14 bg-primary/20 text-primary rounded-2xl flex items-center justify-center mb-6 shadow-sm group-hover:bg-primary group-hover:text-white transition-all">
-                        <Rocket size={28} />
-                      </div>
-                      <h4 className="text-xl font-black text-white mb-2">Advanced Learning Engine</h4>
-                      <p className="text-sm text-white/50 font-medium">Անհատականացված ուսումնական ուղիներ՝ հարմարեցված ձեր նպատակներին:</p>
+                    <div className="mb-10 grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <button onClick={() => setActiveTab('learn')} className="text-left p-5 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group">
+                        <div className="w-11 h-11 rounded-2xl bg-violet-50 text-violet-600 flex items-center justify-center mb-4"><BookOpen size={21} /></div>
+                        <p className="text-xs font-black uppercase tracking-widest text-slate-400">Next step</p>
+                        <h4 className="mt-1 font-black text-slate-900">Շարունակի՛ր դասը</h4>
+                        <p className="text-xs text-slate-500 mt-1">Քո առաջընթացը սպասում է</p>
+                      </button>
+                      <button onClick={() => setActiveTab('goals')} className="text-left p-5 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group">
+                        <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4"><Target size={21} /></div>
+                        <p className="text-xs font-black uppercase tracking-widest text-slate-400">Focus</p>
+                        <h4 className="mt-1 font-black text-slate-900">Քո նպատակները</h4>
+                        <p className="text-xs text-slate-500 mt-1">Սովորելը կապիր իրական նպատակի հետ</p>
+                      </button>
+                      <button onClick={() => setIsMentorOpen(true)} className="text-left p-5 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group">
+                        <div className="w-11 h-11 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center mb-4"><MessageSquare size={21} /></div>
+                        <p className="text-xs font-black uppercase tracking-widest text-slate-400">AI mentor</p>
+                        <h4 className="mt-1 font-black text-slate-900">Հարցրու մենթորին</h4>
+                        <p className="text-xs text-slate-500 mt-1">Օգնություն՝ հենց հիմա</p>
+                      </button>
                     </div>
 
                     <Dashboard 
