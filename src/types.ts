@@ -128,6 +128,8 @@ export type Level = {
   interactiveExercises?: InteractiveExercise[];
   miniSummary: string;
   recommendedReading: BookReference[];
+  knowledgeFoundation?: { sourceId: string; title: string; provider: string; url: string; basis: 'open-material' | 'academic-reference'; sections: string[] }[];
+  sourceReferences?: { sourceId: string; title: string; provider: string; url: string; basis: 'open-material' | 'academic-reference'; sections: string[] }[];
   quiz: QuizQuestion[];
   practiceTask?: PracticalTask;
   game?: PracticalScenario;
