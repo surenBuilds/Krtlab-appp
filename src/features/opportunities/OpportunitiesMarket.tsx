@@ -28,9 +28,10 @@ const OPPORTUNITIES: Opportunity[] = [
 ];
 
 export const OpportunitiesMarket: React.FC = () => {
-  const { profile } = useUserProfile();
+  const { profile, updateProfile } = useUserProfile();
   const gp = profile as unknown as GrowthProfile;
   const userStrengths = gp?.strengths || [];
+  const appliedIds = profile?.appliedOpportunityIds || [];
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
 
@@ -66,7 +67,13 @@ export const OpportunitiesMarket: React.FC = () => {
             {o.deadline && <span className="flex items-center gap-1"><Clock size={12}/>{o.deadline}</span>}
           </div>
           <div className="flex flex-wrap gap-1 mb-3">{o.skillsRequired.map((s) => (<span key={s} className={cn("px-2 py-0.5 rounded-lg text-[10px] font-bold", userStrengths.includes(s) ? "bg-emerald-50 text-emerald-700" : "bg-slate-50 text-slate-400")}>{SKILL_DEFINITIONS.find((d) => d.id === s)?.name || s}</span>))}</div>
-          <button onClick={() => { toast.success(`Application started for ${o.title}!`); if (o.link) window.open(o.link, "_blank"); }} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all flex items-center justify-center gap-2"><Send size={14}/>Apply Now</button>
+          <button onClick={() => {
+            if (!appliedIds.includes(o.id)) {
+              updateProfile({ appliedOpportunityIds: [...appliedIds, o.id] });
+              toast.success(`Դիմումը պահպանվեց՝ ${o.title}`);
+            }
+            if (o.link) window.open(o.link, "_blank");
+          }} className={cn("w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2", appliedIds.includes(o.id) ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-900 text-white hover:bg-slate-800")}><Send size={14}/>{appliedIds.includes(o.id) ? "Applied" : "Apply Now"}</button>
         </motion.div>);
       })}
     </div>
