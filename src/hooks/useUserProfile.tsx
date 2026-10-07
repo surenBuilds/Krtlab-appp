@@ -87,7 +87,7 @@ function writeUserStorage(profile: UserProfile, uid?: string | null) {
 }
 function recordXpEvent(profile: UserProfile, type: 'lesson' | 'quiz' | 'practice' | 'game' | 'project' | 'other', xp: number): UserProfile {
   if (!xp || xp <= 0) return profile;
-  const event = { id: `xp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, type, xp, timestamp: new Date().toISOString() };
+  const event = { id: `xp-${Date.now()}-${typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)}`, type, xp, timestamp: new Date().toISOString() };
   return { ...profile, xpHistory: [...(profile.xpHistory || []).slice(-199), event] };
 }
 
@@ -746,7 +746,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       const feedback = String(data.feedback || "Աշխատանքը գնահատվեց։");
       if (passed) {
         updateProgress(subfieldId, subfieldId, level, score, 'practice');
-        toast.success(`Նախագիծը հաստատվեց։ +${Math.max(0, level * 100)} XP`);
+        toast.success(`Նախագիծը հաստատվեց։ +${score} XP`);
       } else toast.error("Աշխատանքը դեռ չի անցել նվազագույն շեմը։");
       return { score, feedback, passed, strengths: data.strengths || [], improvements: data.improvements || [] };
     } catch (error) {
