@@ -236,7 +236,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         try {
           const docSnap = await getDoc(userDocRef);
-          const localData = localStorage.getItem(getStorageKey(firebaseUser.uid));
+          let localData = localStorage.getItem(getStorageKey(firebaseUser.uid));
           if (!localData) {
             const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
             if (legacy) {
@@ -245,6 +245,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                 if (legacyProfile?.uid === firebaseUser.uid) {
                   localStorage.setItem(getStorageKey(firebaseUser.uid), legacy);
                   localStorage.removeItem(LEGACY_STORAGE_KEY);
+                  localData = legacy;
                 }
               } catch {}
             }
