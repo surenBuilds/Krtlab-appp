@@ -1,5 +1,6 @@
 import { LEARNING_SOURCE_CATALOG, getLearningSources } from "../../../src/data/learningSources";
 import { getAcademicLiterature, mergeAcademicLiterature } from "../../../src/data/academicLiteratureOverrides";
+import { buildSourceGrounding } from "../../../src/data/academicSourceMaterials";
 /**
  * Gemini Learning Service
  */
@@ -49,6 +50,7 @@ export async function generateLessonContent(params: any): Promise<any> {
     literature
   );
   const sources = getLearningSources(category, subfield);
+  const sourceGrounding = buildSourceGrounding(category, subfield, String(currentTopic || subfield), mergedLiterature);
   const phase = level <= 4 ? "Foundation" : level <= 8 ? "Core concepts" : level <= 12 ? "Applied practice" : level <= 16 ? "Advanced application" : "Integration and capstone";
   const curriculumText = curriculum.length ? curriculum.map((t: string, i: number) => `${i + 1}. ${t}`).join("\n") : currentTopic || subfield;
   const previousText = previousLessons.slice(-4).map((x: string, i: number) => `${i + 1}. ${x}`).join("\n");
@@ -82,15 +84,15 @@ QUALITY RULES:
 2. Progress from prerequisite knowledge to application; never assume mastery of later concepts.
 3. Use precise terminology and concrete examples appropriate to the domain.
 4. Treat the supplied academic literature as the knowledge foundation. Do not invent book titles, authors, universities, citations, statistics, standards, laws, URLs, or named frameworks.
-5. Prefer works written by established university researchers/professors and primary academic sources where appropriate. Do not imply a professor affiliation unless it is explicitly supplied in the catalog.
-6. Do not repeat previous lessons except for deliberate prerequisite review.
-7. Exercises must test the stated objective. Practical work must produce a verifiable deliverable.
-8. Quiz must test understanding and application, not only recall. Include exactly 5 questions with 4 options each and one correct answer index.
-9. Include an evaluation rubric with observable criteria.
-10. Set requiredScore between 70 and 85; do not mark a learner as mastered from lesson completion alone.
-11. All learner-facing content must be in Armenian. Technical terms may include their standard English term in parentheses.
-12. recommendedReading MUST contain 3–6 books from the supplied academic literature, matched to this lesson's topic. Do not invent additional books.
-13. Return valid JSON only.
+5. Prefer works written by established university researchers/professors and primary academic sources where appropriate. Do not imply a professor affiliation unless it is explicitly supplied in the catalog.\n6. The lesson must be constructed from the supplied source materials and their grounding notes, not merely mention the books. Use the academic books as the scholarly reference layer and the open/official materials as the accessible evidence layer.\n7. Do not fabricate chapter numbers or pretend to have read a copyrighted book whose text is not supplied. For each core concept, provide a sourceReference pointing to the supplied source material.
+8. Do not repeat previous lessons except for deliberate prerequisite review.
+9. Exercises must test the stated objective. Practical work must produce a verifiable deliverable.
+10. Quiz must test understanding and application, not only recall. Include exactly 5 questions with 4 options each and one correct answer index.
+11. Include an evaluation rubric with observable criteria.
+12. Set requiredScore between 70 and 85; do not mark a learner as mastered from lesson completion alone.
+13. All learner-facing content must be in Armenian. Technical terms may include their standard English term in parentheses.
+14. recommendedReading MUST contain 3–6 books from the supplied academic literature, matched to this lesson's topic. Do not invent additional books.
+15. Return valid JSON only.
 
 Return this exact structure:
 {
@@ -108,6 +110,8 @@ Return this exact structure:
   "exercises": ["..."],
   "miniSummary": "...",
   "recommendedReading": [],
+  "knowledgeFoundation": [{"sourceId":"...","title":"...","provider":"...","url":"...","basis":"open-material","sections":[]}],
+  "sourceReferences": [{"sourceId":"...","title":"...","provider":"...","url":"...","basis":"open-material","sections":[]}],
   "quiz": [{"question":"...","options":["...","...","...","..."],"correctAnswer":0,"explanation":"..."}],
   "practicalTask": {"title":"...","scenario":"...","instructions":["..."],"deliverable":"...","evaluationCriteria":["..."]},
   "assessmentRubric": [{"criterion":"...","weight":25,"masteryEvidence":"..."}],
@@ -174,6 +178,8 @@ function normalizeLesson(
     examples: Array.isArray(lesson.examples) ? lesson.examples : [],
     exercises: Array.isArray(lesson.exercises) ? lesson.exercises : [],
     recommendedReading,
+    knowledgeFoundation: Array.isArray(lesson.knowledgeFoundation) ? lesson.knowledgeFoundation : [],
+    sourceReferences: Array.isArray(lesson.sourceReferences) ? lesson.sourceReferences : [],
     quiz,
     practicalTask: lesson.practicalTask || { title: "Գործնական առաջադրանք", scenario: "", instructions: [], deliverable: "", evaluationCriteria: [] },
     assessmentRubric: Array.isArray(lesson.assessmentRubric) ? lesson.assessmentRubric : [],
@@ -200,6 +206,8 @@ function getFallbackLesson(cat: string, sub: string, lvl: number, topic?: string
     exercises: ["Վարժություն 1"],
     miniSummary: "Ամփոփում:",
     recommendedReading: books,
+    knowledgeFoundation: [],
+    sourceReferences: [],
     quiz: [{ question: "Հարց", options: ["A","B","C","D"], correctAnswer: 0 }],
     practicalTask: { title: "Առաջադրանք", scenario: "", instructions: "", deliverable: "", evaluationCriteria: "" },
     game: { title: "Խաղ", scenario: "", player_role: "", steps: [] },
