@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useTranslation } from '../hooks/useTranslation';
 import { Search, Plus, Sparkles, BookOpen, Clock, Award, Star, Check, Bookmark, ShoppingBag, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useUserProfile } from '../hooks/useUserProfile';
 
 interface CourseModel {
   id: string;
@@ -76,10 +77,11 @@ const INITIAL_COURSES: CourseModel[] = [
 
 export const CourseMarketplace: React.FC = () => {
   const { t } = useTranslation();
+  const { profile, updateProfile } = useUserProfile();
   const [courses, setCourses] = useState<CourseModel[]>(INITIAL_COURSES);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
-  const [enrolledCourses, setEnrolledCourses] = useState<string[]>(['c1']);
+  const enrolledCourses = profile?.enrolledCourseIds || ['c1'];
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiDifficulty, setAiDifficulty] = useState<'Beginner' | 'Intermediate' | 'Advanced'>('Beginner');
@@ -96,7 +98,7 @@ export const CourseMarketplace: React.FC = () => {
       toast.info('Դուք արդեն գրանցված եք այս դասընթացին:');
       return;
     }
-    setEnrolledCourses(prev => [...prev, id]);
+    updateProfile({ enrolledCourseIds: [...enrolledCourses, id] });
     toast.success(t('common.success'), { 
       description: price === 0 ? 'Գրանցումն անցավ հաջողությամբ' : `Դասընթացը գնվել է՝ $${price}` 
     });
@@ -134,7 +136,7 @@ export const CourseMarketplace: React.FC = () => {
         isNew: true
       };
       setCourses(prev => [generated, ...prev]);
-      setEnrolledCourses(prev => [...prev, generated.id]);
+      updateProfile({ enrolledCourseIds: [...enrolledCourses, generated.id] });
       setIsGenerating(false);
       setAiPrompt('');
       toast.success('AI դասընթացը իրականում գեներացվեց և ակտիվացվեց։', {
