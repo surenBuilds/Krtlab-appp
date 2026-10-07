@@ -143,10 +143,34 @@ function normalizeLesson(
   idx?: number,
   literature?: any
 ) {
-  const quiz = Array.isArray(lesson.quiz) ? lesson.quiz.filter((q: any) =>
-    q && typeof q.question === "string" && Array.isArray(q.options) && q.options.length === 4 &&
-    Number.isInteger(q.correctAnswer) && q.correctAnswer >= 0 && q.correctAnswer < 4
-  ).slice(0, 5) : [];
+  const rawQuiz = Array.isArray(lesson.quiz) ? lesson.quiz : [];
+  const quiz = rawQuiz.map((q: any) => {
+    if (!q || typeof q.question !== "string" || !Array.isArray(q.options) || q.options.length !== 4) return null;
+
+    // Gemini can occasionally serialize the correct option as a string or under a
+    // slightly different JSON key. Normalize it before the UI receives the lesson.
+    let correctAnswer = Number.isInteger(q.correctAnswer) ? q.correctAnswer : null;
+    if (correctAnswer === null && Number.isInteger(q.correct_answer)) correctAnswer = q.correct_answer;
+    if (correctAnswer === null && Number.isInteger(q.answerIndex)) correctAnswer = q.answerIndex;
+
+    if (correctAnswer === null && typeof q.correctAnswer === "string") {
+      const numeric = Number(q.correctAnswer);
+      if (Number.isInteger(numeric)) correctAnswer = numeric;
+      else {
+        const idx = q.options.findIndex((option: string) => option.trim() === q.correctAnswer.trim());
+        if (idx >= 0) correctAnswer = idx;
+      }
+    }
+
+    if (!Number.isInteger(correctAnswer) || correctAnswer < 0 || correctAnswer >= 4) return null;
+
+    return {
+      question: q.question.trim(),
+      options: q.options.map((option: any) => String(option)),
+      correctAnswer,
+      ...(typeof q.explanation === "string" ? { explanation: q.explanation } : {})
+    };
+  }).filter(Boolean).slice(0, 5);
 
   const allowedBooks = [
     ...(literature?.beginner || []),
@@ -160,6 +184,8 @@ function normalizeLesson(
         allowedKeys.has(`${b.title}::${b.author}`.toLowerCase())
       )
     : [];
+  // A generated lesson without a complete quiz is not considered valid.
+  // The client cache layer will also invalidate such lessons and request a fresh one.
   const fallbackReading = allowedBooks.slice(0, 6);
   const recommendedReading = [...aiReading, ...fallbackReading].filter((book, index, arr) =>
     arr.findIndex(b => `${b.title}::${b.author}`.toLowerCase() === `${book.title}::${book.author}`.toLowerCase()) === index
