@@ -1244,23 +1244,42 @@ const PracticeLabViewer = ({ task, onComplete }: { task: PracticeLabTask, onComp
 
   const currentStep = task.steps[currentIdx];
 
-  const handleEvaluate = () => {
+  const handleEvaluate = async () => {
     if (!userAnswer.trim() || isEvaluating) return;
     setIsEvaluating(true);
-
-    const expected = currentStep.expectedOutcome.toLowerCase();
-    const isCorrect = userAnswer.toLowerCase().includes(expected) || userAnswer.length > (expected.length * 0.8);
-
-    setTimeout(() => {
-      setEvaluation({
-        isCorrect,
-        feedback: isCorrect 
-          ? "Հիանալի է: Դուք ճիշտ որոշում կայացրեցիք:" 
-          : `Մասնակի ճիշտ է։ Կարևոր էր հաշվի առնել հետևյալը՝ ${currentStep.expectedOutcome}`
+    try {
+      const res = await fetch('/api/gemini?endpoint=gradePractice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subfieldId: 'lesson-practice',
+          level: currentIdx + 1,
+          answer: userAnswer,
+          rubric: {
+            task: currentStep.description,
+            question: currentStep.question,
+            expectedOutcome: currentStep.expectedOutcome,
+            criteria: 'Ճշտություն, հիմնավորում, ամբողջականություն և գործնական կիրառելիություն'
+          }
+        })
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Practice grading failed');
+      const score = Math.max(0, Math.min(100, Number(data.score) || 0));
+      setEvaluation({
+        isCorrect: score >= 70,
+        feedback: data.feedback || (score >= 70 ? 'Գործնական աշխատանքը ընդունվեց։' : 'Ավելացրեք հիմնավորում և կիրառական մանրամասներ։')
+      });
+      if (score >= 70) setPoints(prev => prev + Math.round(score / 5));
+    } catch (error) {
+      console.error('Practice evaluation failed:', error);
+      setEvaluation({
+        isCorrect: false,
+        feedback: 'Գնահատումը ժամանակավորապես անհասանելի է։ Փորձեք կրկին ուղարկել պատասխանը։'
+      });
+    } finally {
       setIsEvaluating(false);
-      if (isCorrect) setPoints(prev => prev + 20);
-    }, 1000);
+    }
   };
 
   const handleNext = () => {
