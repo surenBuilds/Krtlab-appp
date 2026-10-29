@@ -16,6 +16,9 @@ export const AICourseEngine: React.FC = () => {
   const [generating, setGenerating] = useState(false);
   const [activeCourse, setActiveCourse] = useState<AICourse|null>(null);
   const [courseContent, setCourseContent] = useState<any>(null);
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
+  const [quizSubmitted, setQuizSubmitted] = useState(false);
+  const [quizScore, setQuizScore] = useState<number | null>(null);
 
   useEffect(() => {
     if (profile?.uid || profile?.name) {
@@ -35,6 +38,63 @@ export const AICourseEngine: React.FC = () => {
     setCourses(nextCourses);
     updateProfile({ aiCourses: nextCourses });
   }, [updateProfile]);
+
+  useEffect(() => {
+    setSelectedAnswers({});
+    setQuizSubmitted(false);
+    setQuizScore(null);
+  }, [activeCourse?.id, courseContent?.title]);
+
+  const submitQuiz = useCallback(() => {
+    const quiz = Array.isArray(courseContent?.quiz) ? courseContent.quiz : [];
+    if (!quiz.length || quizSubmitted) return;
+    const correct = quiz.filter((question: any, index: number) => selectedAnswers[index] === question.correctAnswer).length;
+    const score = Math.round((correct / quiz.length) * 100);
+    setQuizScore(score);
+    setQuizSubmitted(true);
+    if (score >= 80) {
+      updateProfile({
+        xp: (profile?.xp || 0) + 50,
+        points: (profile?.points || 0) + 50,
+      });
+      toast.success(`Թեստը հանձնված է՝ ${score}%. +50 XP`);
+    } else {
+      toast.error(`Արդյունքը՝ ${score}%. Կրկնիր նյութը և փորձիր նորից։`);
+    }
+  }, [courseContent, quizSubmitted, selectedAnswers, profile?.xp, profile?.points, updateProfile]);
+
+  const handleNextLesson = useCallback(async () => {
+    if (!activeCourse || quizScore === null || quizScore < 80) return;
+    if (activeCourse.currentLevel >= activeCourse.totalLevels) {
+      toast.success("Շնորհավորում ենք․ ավարտեցիր այս անհատականացված դասընթացը։");
+      return;
+    }
+    const nextLevel = activeCourse.currentLevel + 1;
+    const nextTopic = activeCourse.topics[activeCourse.currentLevel] || `${activeCourse.title} — գործնական կիրառում ${nextLevel}`;
+    const subfield = CATEGORIES.find(category => category.id === activeCourse.category)?.subfields.find(item => item.id === activeCourse.subfield);
+    setGenerating(true);
+    try {
+      const content = await generateLessonContent(
+        activeCourse.category,
+        activeCourse.subfield,
+        nextLevel,
+        subfield?.recommendedLiterature,
+        activeCourse.topics.slice(0, activeCourse.currentLevel),
+        nextTopic,
+        nextLevel - 1,
+        activeCourse.topics
+      );
+      const updated = { ...activeCourse, currentLevel: nextLevel, content };
+      persistCourses(courses.map(course => course.id === activeCourse.id ? updated : course));
+      setActiveCourse(updated);
+      setCourseContent(content);
+      toast.success(`Հաջորդ դասը պատրաստ է՝ ${content.title || nextTopic}`);
+    } catch {
+      toast.error("Հաջորդ դասը ստեղծել չհաջողվեց։ Փորձիր կրկին։");
+    } finally {
+      setGenerating(false);
+    }
+  }, [activeCourse, quizScore, courses, persistCourses]);
 
   const generateNewCourse = useCallback(async () => {
     const activeGoal = profile?.intelligenceState?.goals?.find(g => g.status === "active");
@@ -116,7 +176,7 @@ export const AICourseEngine: React.FC = () => {
       {courseContent.detailedExplanation&&<section><h4 className="font-black mb-3">Բացատրություն</h4><p className="text-slate-700 leading-7 whitespace-pre-line">{courseContent.detailedExplanation}</p></section>}
       {courseContent.examples?.length>0&&<section><h4 className="font-black mb-3">Գործնական օրինակներ</h4><ol className="list-decimal pl-5 space-y-2 text-slate-700">{courseContent.examples.map((example:string,i:number)=><li key={i}>{example}</li>)}</ol></section>}
       {courseContent.exercises?.length>0&&<section><h4 className="font-black mb-3">Ինքնուրույն վարժություններ</h4><ol className="list-decimal pl-5 space-y-2 text-slate-700">{courseContent.exercises.map((exercise:string,i:number)=><li key={i}>{exercise}</li>)}</ol></section>}
-      {courseContent.quiz?.length>0&&<section><h4 className="font-black mb-3">Գիտելիքի ստուգում</h4><div className="space-y-4">{courseContent.quiz.map((question:any,i:number)=><div key={i} className="rounded-2xl bg-slate-50 p-4"><p className="font-bold mb-2">{i+1}. {question.question}</p><ul className="list-disc pl-5 space-y-1 text-sm text-slate-600">{(question.options||[]).map((option:string,j:number)=><li key={j}>{option}</li>)}</ul>{typeof question.correctAnswer==="number"&&<p className="mt-2 text-sm font-semibold text-emerald-700">Ճիշտ պատասխան՝ {question.options?.[question.correctAnswer] || "նշված չէ"}</p>}{question.explanation&&<p className="mt-1 text-sm text-slate-500">{question.explanation}</p>}</div>)}</div></section>}
+      {courseContent.quiz?.length>0&&<section><h4 className="font-black mb-3">Գիտելիքի ստուգում</h4><div className="space-y-4">{courseContent.quiz.map((question:any,i:number)=><div key={i} className="rounded-2xl bg-slate-50 p-4"><p className="font-bold mb-3">{i+1}. {question.question}</p><div className="space-y-2">{(question.options||[]).map((option:string,j:number)=><button key={j} type="button" disabled={quizSubmitted} onClick={()=>setSelectedAnswers(previous=>({...previous,[i]:j}))} className={cn("w-full text-left rounded-xl border px-4 py-3 text-sm transition-colors",selectedAnswers[i]===j?"border-primary bg-primary/10 text-slate-900":"border-slate-200 bg-white hover:border-primary/40",quizSubmitted&&j===question.correctAnswer&&"border-emerald-500 bg-emerald-50 text-emerald-800",quizSubmitted&&selectedAnswers[i]===j&&j!==question.correctAnswer&&"border-red-400 bg-red-50 text-red-800")}>{option}</button>)}</div>{quizSubmitted&&<div className="mt-3 text-sm"><p className="font-semibold text-emerald-700">Ճիշտ պատասխան՝ {question.options?.[question.correctAnswer] || "նշված չէ"}</p>{question.explanation&&<p className="mt-1 text-slate-500">{question.explanation}</p>}</div>}</div>)}</div>{!quizSubmitted?<button type="button" onClick={submitQuiz} disabled={Object.keys(selectedAnswers).length<courseContent.quiz.length} className="mt-4 rounded-xl bg-primary px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">Ստուգել պատասխանները</button>:<div className="mt-4 rounded-2xl border p-4"><p className="font-black">Արդյունք՝ {quizScore}%</p>{quizScore!==null&&quizScore>=80&&activeCourse.currentLevel<activeCourse.totalLevels&&<button type="button" onClick={handleNextLesson} disabled={generating} className="mt-3 rounded-xl bg-slate-900 px-5 py-3 font-bold text-white disabled:opacity-50">{generating?"Հաջորդ դասը պատրաստվում է…":"Անցնել հաջորդ դասին"}</button>}{quizScore!==null&&quizScore>=80&&activeCourse.currentLevel>=activeCourse.totalLevels&&<p className="mt-2 text-sm text-emerald-700">Դասընթացն ավարտված է։</p>}{quizScore!==null&&quizScore<80&&<button type="button" onClick={()=>{setSelectedAnswers({});setQuizSubmitted(false);setQuizScore(null)}} className="mt-3 rounded-xl border px-5 py-3 font-bold">Կրկին փորձել</button>}</div>}</section>}
       {courseContent.practiceTask&&<section className="rounded-2xl border border-primary/20 bg-primary/5 p-5"><h4 className="font-black mb-2">Գործնական առաջադրանք · {courseContent.practiceTask.title}</h4><p className="text-sm text-slate-700 mb-2">{courseContent.practiceTask.scenario}</p><p className="text-sm text-slate-600 mb-2">{courseContent.practiceTask.mission}</p><p className="text-sm whitespace-pre-line">{courseContent.practiceTask.instructions}</p><p className="mt-3 text-xs text-slate-500">Արդյունք՝ {courseContent.practiceTask.deliverable}</p></section>}
       {courseContent.miniSummary&&<section className="border-t pt-4"><h4 className="font-black mb-2">Ամփոփում</h4><p className="text-slate-600 leading-relaxed">{courseContent.miniSummary}</p></section>}
     </div>}
