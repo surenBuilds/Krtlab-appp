@@ -48,5 +48,5 @@ Reviewed the repository's top-level build/deployment configuration, Firebase ini
 
 ## Validation status
 - Source/config review completed.
-- GitHub Actions passed API syntax checking and TypeScript checking on the latest security-gate run. The production build was skipped because the critical dependency audit failed; CI was reordered so the build runs before the audit on the next run. The dependency audit is a release blocker.
+- GitHub Actions passed API syntax checking and TypeScript checking on the latest security-gate run. The latest run passed API syntax checking, TypeScript checking, and the production build. The dependency audit then failed on critical production advisories; this remains a release blocker.
 - Firestore rule changes are included in this PR but have not been deployed. They need a controlled deployment after reviewing existing roles and verifying the preview environment.
