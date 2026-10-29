@@ -747,9 +747,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         requiredSkills: decomposition.requiredSkills,
         milestones: decomposition.milestones.map(milestone => ({
           ...milestone,
+          knowledge: [],
           completed: false,
         })),
-        learningPlan: decomposition.learningPlan,
+        learningPlan: decomposition.learningPlan.map(week => ({
+          ...week,
+          concepts: [],
+          completed: false,
+        })),
         createdAt: now,
         updatedAt: now,
       };

@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
 import { Mail } from "lucide-react";
-import { cn } from "../../lib/utils";
 import { toast } from "sonner";
 import { signInWithGoogle, logout, loginWithEmail, registerWithEmail } from "../../lib/firebase";
 import { Logo } from "../../components/Logo";
@@ -11,8 +10,6 @@ export const OnboardingPage = ({ onComplete, user, onLogout }: {
   user: any; onLogout: () => void;
 }) => {
   const [name, setName] = useState("");
-  const [school, setSchool] = useState("");
-  const [selectedRole, setSelectedRole] = useState<"admin" | "teacher" | "student">("student");
   const [showEmailLogin, setShowEmailLogin] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,14 +35,7 @@ export const OnboardingPage = ({ onComplete, user, onLogout }: {
   if (!user && !showEmailLogin) return wrap(
     <div className="space-y-6">
       <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Մուտքագրեք ձեր անունը" className="w-full px-8 py-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] focus:border-accent focus:bg-white outline-none transition-all text-xl font-bold shadow-sm" />
-      <input type="text" value={school} onChange={(e) => setSchool(e.target.value)} placeholder="Դպրոց / Հաստատություն" className="w-full px-8 py-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] focus:border-accent focus:bg-white outline-none transition-all text-xl font-bold shadow-sm" />
-      <label className="block text-sm font-black text-slate-700 ml-1 uppercase tracking-widest">Դեր</label>
-      <div className="grid grid-cols-3 gap-3">
-        {(["student", "teacher", "admin"] as const).map((r) => (
-          <button key={r} onClick={() => setSelectedRole(r)} className={cn("py-4 rounded-2xl font-black text-xs uppercase tracking-widest border-2 transition-all", selectedRole === r ? "bg-slate-900 border-slate-900 text-white shadow-lg" : "bg-white border-slate-100 text-slate-400 hover:border-slate-200")}>{r === "admin" ? "Ադմին" : r === "teacher" ? "Ուսուցիչ" : "Աշակերտ"}</button>
-        ))}
-      </div>
-      <button onClick={() => name.trim() && onComplete({ name, school, role: selectedRole })} disabled={!name.trim()} className="w-full bg-slate-900 text-white py-5 rounded-[1.5rem] font-black text-xl hover:opacity-90 transition-all shadow-xl disabled:opacity-50">Շարունակել</button>
+      <button onClick={() => name.trim() && onComplete({ name: name.trim(), role: "student" })} disabled={!name.trim()} className="w-full bg-slate-900 text-white py-5 rounded-[1.5rem] font-black text-xl hover:opacity-90 transition-all shadow-xl disabled:opacity-50">Շարունակել</button>
       <div className="relative"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100"></div></div><div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-slate-400 font-bold">Կամ</span></div></div>
       <button onClick={handleGoogleSignIn} className="w-full flex items-center justify-center gap-3 bg-white border-2 border-slate-100 text-slate-700 py-5 rounded-[1.5rem] font-black text-lg hover:bg-slate-50 transition-all shadow-sm"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-6 h-6" /> Google</button>
       <button onClick={() => setShowEmailLogin(true)} className="w-full flex items-center justify-center gap-3 bg-white border-2 border-slate-100 text-slate-700 py-5 rounded-[1.5rem] font-black text-lg hover:bg-slate-50 transition-all shadow-sm"><Mail size={24} /> Email</button>
@@ -67,13 +57,7 @@ export const OnboardingPage = ({ onComplete, user, onLogout }: {
   return wrap(
     <div className="space-y-6">
       <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Մուտքագրեք ձեր անունը" className="w-full px-8 py-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] focus:border-accent focus:bg-white outline-none transition-all text-xl font-bold shadow-sm" />
-      <input type="text" value={school} onChange={(e) => setSchool(e.target.value)} placeholder="Դպրոց / Հաստատություն" className="w-full px-8 py-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] focus:border-accent focus:bg-white outline-none transition-all text-xl font-bold shadow-sm" />
-      <div className="grid grid-cols-3 gap-3">
-        {(["student", "teacher", "admin"] as const).map((r) => (
-          <button key={r} onClick={() => setSelectedRole(r)} className={cn("py-4 rounded-2xl font-black text-xs uppercase tracking-widest border-2 transition-all", selectedRole === r ? "bg-slate-900 border-slate-900 text-white shadow-lg" : "bg-white border-slate-100 text-slate-400 hover:border-slate-200")}>{r === "admin" ? "Ադմին" : r === "teacher" ? "Ուսուցիչ" : "Աշակերտ"}</button>
-        ))}
-      </div>
-      <button onClick={() => name.trim() && onComplete({ name, school, role: selectedRole })} disabled={!name.trim()} className="w-full bg-gradient-brand text-white py-6 rounded-[1.5rem] font-black text-xl hover:opacity-90 transition-all shadow-xl shadow-primary/20 disabled:opacity-50">Պահպանել և Սկսել</button>
+      <button onClick={() => name.trim() && onComplete({ name: name.trim(), role: "student" })} disabled={!name.trim()} className="w-full bg-gradient-brand text-white py-6 rounded-[1.5rem] font-black text-xl hover:opacity-90 transition-all shadow-xl shadow-primary/20 disabled:opacity-50">Պահպանել և Սկսել</button>
       <button onClick={onLogout} className="w-full text-slate-400 font-bold hover:underline">Դուրս գալ</button>
     </div>
   );

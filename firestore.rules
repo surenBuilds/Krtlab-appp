@@ -68,15 +68,16 @@ service cloud.firestore {
     // User profiles
     match /users/{userId} {
       allow read: if isOwner(userId);
-      allow create: if isOwner(userId) && isValidUser(request.resource.data);
-      allow update: if isOwner(userId) && isValidUser(request.resource.data);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'student';
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.get('role', null) == resource.data.get('role', null);
     }
 
     // Lessons collection
     match /lessons/{lessonId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidLesson(request.resource.data);
-      allow update: if isAuthenticated() && isValidLesson(request.resource.data);
+      // Shared lesson content must be written by a trusted server/admin process.
+      // Client-side generated lessons are cached locally until a trusted write API exists.
+      allow create, update, delete: if false;
     }
 
     // Discussions collection

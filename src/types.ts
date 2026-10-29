@@ -304,6 +304,23 @@ export type UserProfile = {
   labXp?: number;
   labStreak?: number;
   intelligenceState?: IntelligenceState;
+  // Legacy compatibility fields populated by the intelligence engine.
+  skills?: any[];
+  mastery?: any[];
+  aiCourses?: Array<{
+    id: string;
+    title: string;
+    category: string;
+    subfield: string;
+    totalLevels: number;
+    currentLevel: number;
+    status: "ready" | "generating" | "error";
+    topics: string[];
+    skillId: string;
+    targetLevel: number;
+    content?: any;
+    completedLevels?: number[];
+  }>;
 }
 
 export type PracticeSubmission = {

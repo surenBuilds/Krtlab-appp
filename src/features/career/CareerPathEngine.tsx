@@ -4,7 +4,6 @@ import { motion } from "motion/react";
 import { Briefcase, TrendingUp, Target, ArrowRight, AlertCircle } from "lucide-react";
 import { useUserProfile } from "../../hooks/useUserProfile";
 import { SKILL_DEFINITIONS } from "../../data/skillMappings";
-import type { GrowthProfile, CareerSkillGap } from "../../types/learner";
 
 interface CareerRole { title: string; description: string; requiredSkills: string[]; salaryRange: string; demand: string; }
 const CAREER_ROLES: CareerRole[] = [
@@ -19,9 +18,8 @@ const CAREER_ROLES: CareerRole[] = [
 export const CareerPathEngine: React.FC = () => {
   const { profile } = useUserProfile();
   const navigate = useNavigate();
-  const gp = profile as unknown as GrowthProfile;
-  const userStrengths = gp?.strengths || [];
-  const mastery = gp?.intelligenceState?.skillBaseline || [];
+  const userStrengths = (profile as any)?.strengths || [];
+  const mastery = profile?.intelligenceState?.skillBaseline || [];
 
   const roles = useMemo(() => CAREER_ROLES.map((role) => {
     const gaps = role.requiredSkills.map((sid, i) => {

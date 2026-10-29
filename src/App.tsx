@@ -37,6 +37,7 @@ import { GoalSystem } from './components/GoalSystem';
 import { MonetizationSystem } from './components/MonetizationSystem';
 import { Leaderboard } from './features/leaderboard/Leaderboard';
 import { PremiumGate } from './features/premium/PremiumGate';
+import { AICourseEngine } from './features/courses/AICourseEngine';
 
 import { 
   Trophy, BookOpen, BarChart3, LayoutDashboard, MessageSquare, BrainCircuit, 
@@ -44,7 +45,7 @@ import {
   Wallet, Briefcase, Cpu, FlaskConical, Globe, Scale, 
   Building2, Plane, Truck, Rocket, Factory, RefreshCcw, Map,
   Mic, MicOff, Languages, LogOut, Mail, TestTube2, Gamepad2, Target, Compass,
-  Wand2
+  Wand2, Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -77,7 +78,7 @@ export default function App() {
   } = useUserProfile();
   const { preGenerate } = useLessons();
   const { t, language, setLanguage } = useTranslation();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'learn' | 'flashcards' | 'paths' | 'games' | 'goals' | 'creator' | 'lab' | 'school' | 'module' | 'mentor-marketplace' | 'course-marketplace' | 'skill-graph' | 'portfolio' | 'career-center' | 'org-dashboard' | 'dev-platform' | 'monetization' | 'leaderboard' | 'growth-dashboard' | 'goals-system' | 'command-center'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'learn' | 'flashcards' | 'paths' | 'games' | 'goals' | 'creator' | 'lab' | 'school' | 'module' | 'mentor-marketplace' | 'course-marketplace' | 'skill-graph' | 'portfolio' | 'career-center' | 'org-dashboard' | 'dev-platform' | 'monetization' | 'leaderboard' | 'growth-dashboard' | 'goals-system' | 'command-center' | 'ai-courses'>('dashboard');
   const [labTopic, setLabTopic] = useState<{ field: string, topic: string } | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
@@ -337,6 +338,12 @@ export default function App() {
             onClick={() => setActiveTab('learn')}
             icon={<BookOpen size={16} />}
             label={t('nav.learn')}
+          />
+          <NavItem
+            active={activeTab === 'ai-courses'}
+            onClick={() => setActiveTab('ai-courses')}
+            icon={<Sparkles size={16} />}
+            label="ԱԲ դասընթացների ստեղծում"
           />
           <NavItem 
             active={activeTab === 'paths'} 
@@ -1109,6 +1116,17 @@ export default function App() {
               </motion.div>
             )}
 
+            {activeTab === 'ai-courses' && (
+              <motion.div
+                key="ai-courses"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <AICourseEngine />
+              </motion.div>
+            )}
+
             {activeTab === 'course-marketplace' && (
               <motion.div
                 key="course-marketplace"
@@ -1292,6 +1310,12 @@ export default function App() {
                   icon={<BookOpen />}
                   label="Դասընթացներ"
                 />
+                <MobileNavItem
+                  active={activeTab === 'ai-courses'}
+                  onClick={() => { setActiveTab('ai-courses'); setIsMobileMenuOpen(false); }}
+                  icon={<Sparkles />}
+                  label="ԱԲ դասընթացներ"
+                />
                 <MobileNavItem 
                   active={activeTab === 'paths'} 
                   onClick={() => { setActiveTab('paths'); setSelectedPath(null); setIsMobileMenuOpen(false); }}
@@ -1378,8 +1402,6 @@ const MobileNavItem = ({ active, onClick, icon, label }: { active: boolean, onCl
 
 const Onboarding = ({ onComplete, user, onLogout }: { onComplete: (data: { name: string, school?: string, role: 'admin' | 'teacher' | 'student' }) => void, user: any, onLogout: () => void }) => {
   const [name, setName] = useState('');
-  const [school, setSchool] = useState('');
-  const [selectedRole, setSelectedRole] = useState<'admin' | 'teacher' | 'student'>('student');
   const [showEmailLogin, setShowEmailLogin] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -1435,36 +1457,9 @@ const Onboarding = ({ onComplete, user, onLogout }: { onComplete: (data: { name:
                 placeholder="Մուտքագրեք ձեր անունը"
                 className="w-full px-8 py-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] focus:border-accent focus:bg-white outline-none transition-all text-xl font-bold shadow-sm focus:shadow-xl focus:shadow-accent/10"
               />
-              <input
-                type="text"
-                value={school}
-                onChange={(e) => setSchool(e.target.value)}
-                placeholder="Դպրոց / Հաստատություն (ըստ ցանկության)"
-                className="w-full px-8 py-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] focus:border-accent focus:bg-white outline-none transition-all text-xl font-bold shadow-sm focus:shadow-xl focus:shadow-accent/10"
-              />
-              
-              <div className="space-y-3">
-                <label className="block text-sm font-black text-slate-700 ml-1 uppercase tracking-widest">Դեր</label>
-                <div className="grid grid-cols-3 gap-3">
-                   {(['student', 'teacher', 'admin'] as const).map(r => (
-                     <button
-                       key={r}
-                       onClick={() => setSelectedRole(r)}
-                       className={cn(
-                         "py-4 rounded-2xl font-black text-xs uppercase tracking-widest border-2 transition-all",
-                         selectedRole === r 
-                           ? "bg-slate-900 border-slate-900 text-white shadow-lg" 
-                           : "bg-white border-slate-100 text-slate-400 hover:border-slate-200"
-                       )}
-                     >
-                       {r === 'admin' ? 'Ադմին' : r === 'teacher' ? 'Ուսուցիչ' : 'Աշակերտ'}
-                     </button>
-                   ))}
-                </div>
-              </div>
 
               <button
-                onClick={() => name.trim() && onComplete({ name, school, role: selectedRole })}
+                onClick={() => name.trim() && onComplete({ name: name.trim(), role: 'student' })}
                 disabled={!name.trim()}
                 className="w-full bg-slate-900 text-white py-5 rounded-[1.5rem] font-black text-xl hover:opacity-90 transition-all shadow-xl shadow-slate-200 disabled:opacity-50"
               >
@@ -1536,36 +1531,9 @@ const Onboarding = ({ onComplete, user, onLogout }: { onComplete: (data: { name:
                 placeholder="Մուտքագրեք ձեր անունը"
                 className="w-full px-8 py-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] focus:border-accent focus:bg-white outline-none transition-all text-xl font-bold shadow-sm focus:shadow-xl focus:shadow-accent/10"
               />
-              <input
-                type="text"
-                value={school}
-                onChange={(e) => setSchool(e.target.value)}
-                placeholder="Դպրոց / Հաստատություն (ըստ ցանկության)"
-                className="w-full px-8 py-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] focus:border-accent focus:bg-white outline-none transition-all text-xl font-bold shadow-sm focus:shadow-xl focus:shadow-accent/10"
-              />
-
-              <div className="space-y-3">
-                <label className="block text-sm font-black text-slate-700 ml-1 uppercase tracking-widest">Դեր</label>
-                <div className="grid grid-cols-3 gap-3">
-                   {(['student', 'teacher', 'admin'] as const).map(r => (
-                     <button
-                       key={r}
-                       onClick={() => setSelectedRole(r)}
-                       className={cn(
-                         "py-4 rounded-2xl font-black text-xs uppercase tracking-widest border-2 transition-all",
-                         selectedRole === r 
-                           ? "bg-slate-900 border-slate-900 text-white shadow-lg" 
-                           : "bg-white border-slate-100 text-slate-400 hover:border-slate-200"
-                       )}
-                     >
-                       {r === 'admin' ? 'Ադմին' : r === 'teacher' ? 'Ուսուցիչ' : 'Աշակերտ'}
-                     </button>
-                   ))}
-                </div>
-              </div>
             </div>
             <button
-              onClick={() => name.trim() && onComplete({ name, school, role: selectedRole })}
+              onClick={() => name.trim() && onComplete({ name: name.trim(), role: 'student' })}
               disabled={!name.trim()}
               className="w-full bg-gradient-brand text-white py-6 rounded-[1.5rem] font-black text-xl hover:opacity-90 transition-all shadow-xl shadow-primary/20 disabled:opacity-50 glow-cyan-hover"
             >

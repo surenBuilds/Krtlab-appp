@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { db, auth } from '../lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { generateLessonContent } from '../services/geminiService';
 import { CATEGORIES } from '../data/categories';
 import { PracticalTask, UniversalGame } from '../types';
@@ -390,11 +390,6 @@ export const useLessonStore = () => {
 
       // 6. Save to Cache & Lock
       localStorage.setItem(lessonId, JSON.stringify(content));
-      if (auth.currentUser) {
-        setDoc(doc(db, 'lessons', lessonId), content).catch(error => {
-          handleFirestoreError(error, OperationType.WRITE, `lessons/${lessonId}`);
-        });
-      }
 
       const finalState = {
         lessonId,
