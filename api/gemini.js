@@ -103,23 +103,56 @@ const handlers = {
   async extractTermsFromLesson(body) { return await generateContent(`Extract 5 key terms from this lesson content`); },
 };
 
-export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+const MAX_REQUEST_BYTES = 100_000;
+const MAX_MENTOR_MESSAGES = 40;
+const MAX_MENTOR_MESSAGE_CHARS = 4_000;
 
-  if (req.method === "OPTIONS") return res.status(200).end();
+export default async function handler(req, res) {
+  // The app and API are served from the same origin. Do not enable arbitrary
+  // cross-origin browser access to a paid AI endpoint.
+  if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
 
   try {
-    console.log(`[gemini] Endpoint=${req.query.endpoint}`);
-    const endpoint = req.query.endpoint || "chatWithMentor";
-    const handler = handlers[endpoint];
-    if (!handler) return res.status(404).json({ error: `Unknown endpoint: ${endpoint}` });
-    const result = await handler(req.body);
+    const body = req.body;
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return res.status(400).json({ error: "A JSON object body is required" });
+    }
+
+    const serializedBody = JSON.stringify(body);
+    if (Buffer.byteLength(serializedBody, "utf8") > MAX_REQUEST_BYTES) {
+      return res.status(413).json({ error: "Request body is too large" });
+    }
+
+    const endpoint = typeof req.query.endpoint === "string" ? req.query.endpoint : "chatWithMentor";
+    const selectedHandler = handlers[endpoint];
+    if (!selectedHandler) return res.status(404).json({ error: "Unknown endpoint" });
+
+    if (endpoint === "chatWithMentor") {
+      if (!Array.isArray(body.messages) || body.messages.length > MAX_MENTOR_MESSAGES) {
+        return res.status(400).json({ error: `messages must be an array with at most ${MAX_MENTOR_MESSAGES} items` });
+      }
+      if (typeof body.userName !== "string" || body.userName.trim().length === 0 || body.userName.length > 80) {
+        return res.status(400).json({ error: "userName must be a non-empty string of at most 80 characters" });
+      }
+      const hasInvalidMessage = body.messages.some((message) =>
+        !message ||
+        typeof message !== "object" ||
+        !["user", "assistant", "model"].includes(message.role) ||
+        typeof message.text !== "string" ||
+        message.text.length > MAX_MENTOR_MESSAGE_CHARS
+      );
+      if (hasInvalidMessage) {
+        return res.status(400).json({ error: "Each message must have a valid role and text of at most 4000 characters" });
+      }
+    }
+
+    console.log(`[gemini] Endpoint=${endpoint}`);
+    const result = await selectedHandler(body);
     return res.status(200).json(result);
   } catch (err) {
-    console.error("[gemini] Error:", err.message);
-    return res.status(500).json({ error: err.message || "Internal error" });
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[gemini] Error:", message);
+    return res.status(500).json({ error: "AI request failed" });
   }
 }
