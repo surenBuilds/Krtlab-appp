@@ -14,11 +14,20 @@ async function verifyFirebaseUser(req) {
   if (!idToken || idToken.length > 10_000) return null;
 
   const apiKey = process.env.FIREBASE_API_KEY || firebaseConfig.apiKey;
-  const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(apiKey)}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ idToken }),
-  });
+  if (typeof apiKey !== "string" || !apiKey.trim()) return null;
+
+  let response;
+  try {
+    response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(apiKey)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken }),
+      signal: AbortSignal.timeout(8_000),
+    });
+  } catch {
+    // Authentication provider timeout/network failure should fail closed.
+    return null;
+  }
   if (!response.ok) return null;
   const data = await response.json();
   const user = Array.isArray(data.users) ? data.users[0] : null;
@@ -147,7 +156,26 @@ const handlers = {
 
   async generateProgressionFeedback(body) {
     const { input } = body;
-    return { userId: input.userId, lessonId: input.lessonId, newLevel: input.quizScore >= 80 ? Math.min(input.currentLevel + 1, input.maxLevel) : input.currentLevel, status: input.quizScore >= 80 ? "level-up" : "same-level", messageText: "Շարունակեք:", audioUrl: "" };
+    const passed = input.quizScore >= 80;
+    const newLevel = passed ? Math.min(input.currentLevel + 1, input.maxLevel) : input.currentLevel;
+    const feedbackPrompt = `Դու KrtLab-ի անհատական ուսումնական մենթորն ես։ Գրիր հայերեն 2-4 կարճ նախադասությամբ կոնկրետ և խրախուսող հետադարձ կապ։
+Սովորող՝ ${input.userName || "սովորող"}
+Դաս՝ ${input.lessonId}
+Թեստի արդյունք՝ ${input.quizScore}%
+Ժամանակ՝ ${input.timeSpent || "նշված չէ"}
+Սխալների թեմաներ՝ ${input.mistakes.join("; ") || "նշված չեն"}
+Արդյունք՝ ${passed ? "անցել է շեմը" : "պետք է կրկնի նյութը"}
+Ընթացիկ մակարդակ՝ ${input.currentLevel}/${input.maxLevel}
+Տուր մեկ կոնկրետ հաջորդ քայլ։ Մի հորինիր արդյունքներ։`;
+    const messageText = await generateContent(feedbackPrompt);
+    return {
+      userId: input.userId,
+      lessonId: input.lessonId,
+      newLevel,
+      status: passed ? (newLevel > input.currentLevel ? "level-up" : "completed") : "same-level",
+      messageText,
+      audioUrl: "",
+    };
   },
 
   async generateLanguagePlacementTest(body) { return await generateContent(`Placement test for ${body.language}`); },
@@ -159,7 +187,7 @@ const handlers = {
   },
   async generateLanguageGrammar(body) { return await generateContent(`Grammar lesson: ${body.language} ${body.level}`); },
   async generateStandaloneGame(body) { return await generateContent(`Educational game for ${body.topic} (${body.domain})`); },
-  async extractTermsFromLesson(body) { return await generateContent(`Extract 5 key terms from this lesson content`); },
+  async extractTermsFromLesson(body) { const lessonContent = typeof body.lessonContent === "string" ? body.lessonContent.slice(0, 12_000) : ""; if (!lessonContent.trim()) throw new Error("Lesson content is required"); return await generateContent(`Extract 5 key terms from this lesson content. Return concise terms with short definitions in Armenian.\\nLESSON:\\n${lessonContent}`, "application/json"); },
 };
 
 const MAX_REQUEST_BYTES = 100_000;
@@ -191,6 +219,27 @@ export default async function handler(req, res) {
     const endpoint = typeof req.query.endpoint === "string" ? req.query.endpoint : "chatWithMentor";
     const selectedHandler = handlers[endpoint];
     if (!selectedHandler) return res.status(404).json({ error: "Unknown endpoint" });
+
+    if (endpoint === "generateProgressionFeedback") {
+      const input = body.input;
+      if (!input || typeof input !== "object" || Array.isArray(input) || input.userId !== firebaseUid) {
+        return res.status(403).json({ error: "Progress feedback must belong to the signed-in user" });
+      }
+      if (typeof input.lessonId !== "string" || input.lessonId.length < 1 || input.lessonId.length > 200 ||
+          typeof input.quizScore !== "number" || !Number.isFinite(input.quizScore) || input.quizScore < 0 || input.quizScore > 100 ||
+          typeof input.currentLevel !== "number" || !Number.isInteger(input.currentLevel) || input.currentLevel < 1 || input.currentLevel > 100 ||
+          typeof input.maxLevel !== "number" || !Number.isInteger(input.maxLevel) || input.maxLevel < input.currentLevel || input.maxLevel > 100 ||
+          (input.userName !== undefined && (typeof input.userName !== "string" || input.userName.length > 80)) ||
+          (input.timeSpent !== undefined && (typeof input.timeSpent !== "string" || input.timeSpent.length > 100)) ||
+          (input.mistakes !== undefined && (!Array.isArray(input.mistakes) || input.mistakes.length > 20 || input.mistakes.some(item => typeof item !== "string" || item.length > 300)))) {
+        return res.status(400).json({ error: "Invalid progression feedback input" });
+      }
+    }
+
+    if (endpoint === "extractTermsFromLesson" &&
+        (typeof body.lessonContent !== "string" || body.lessonContent.trim().length === 0 || body.lessonContent.length > 12_000)) {
+      return res.status(400).json({ error: "lessonContent must be a non-empty string of at most 12000 characters" });
+    }
 
     if (endpoint === "chatWithMentor") {
       if (!Array.isArray(body.messages) || body.messages.length > MAX_MENTOR_MESSAGES) {
