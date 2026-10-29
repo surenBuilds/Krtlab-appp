@@ -750,7 +750,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           knowledge: [],
           completed: false,
         })),
-        learningPlan: decomposition.learningPlan,
+        learningPlan: decomposition.learningPlan.map(week => ({
+          ...week,
+          concepts: [],
+          completed: false,
+        })),
         createdAt: now,
         updatedAt: now,
       };
