@@ -37,6 +37,7 @@ import { GoalSystem } from './components/GoalSystem';
 import { MonetizationSystem } from './components/MonetizationSystem';
 import { Leaderboard } from './features/leaderboard/Leaderboard';
 import { PremiumGate } from './features/premium/PremiumGate';
+import { AICourseEngine } from './features/courses/AICourseEngine';
 
 import { 
   Trophy, BookOpen, BarChart3, LayoutDashboard, MessageSquare, BrainCircuit, 
@@ -77,7 +78,7 @@ export default function App() {
   } = useUserProfile();
   const { preGenerate } = useLessons();
   const { t, language, setLanguage } = useTranslation();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'learn' | 'flashcards' | 'paths' | 'games' | 'goals' | 'creator' | 'lab' | 'school' | 'module' | 'mentor-marketplace' | 'course-marketplace' | 'skill-graph' | 'portfolio' | 'career-center' | 'org-dashboard' | 'dev-platform' | 'monetization' | 'leaderboard' | 'growth-dashboard' | 'goals-system' | 'command-center'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'learn' | 'flashcards' | 'paths' | 'games' | 'goals' | 'creator' | 'lab' | 'school' | 'module' | 'mentor-marketplace' | 'course-marketplace' | 'skill-graph' | 'portfolio' | 'career-center' | 'org-dashboard' | 'dev-platform' | 'monetization' | 'leaderboard' | 'growth-dashboard' | 'goals-system' | 'command-center' | 'ai-courses'>('dashboard');
   const [labTopic, setLabTopic] = useState<{ field: string, topic: string } | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
@@ -337,6 +338,12 @@ export default function App() {
             onClick={() => setActiveTab('learn')}
             icon={<BookOpen size={16} />}
             label={t('nav.learn')}
+          />
+          <NavItem
+            active={activeTab === 'ai-courses'}
+            onClick={() => setActiveTab('ai-courses')}
+            icon={<Sparkles size={16} />}
+            label="ԱԲ դասընթացների ստեղծում"
           />
           <NavItem 
             active={activeTab === 'paths'} 
@@ -1109,6 +1116,17 @@ export default function App() {
               </motion.div>
             )}
 
+            {activeTab === 'ai-courses' && (
+              <motion.div
+                key="ai-courses"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <AICourseEngine />
+              </motion.div>
+            )}
+
             {activeTab === 'course-marketplace' && (
               <motion.div
                 key="course-marketplace"
@@ -1291,6 +1309,12 @@ export default function App() {
                   onClick={() => { setActiveTab('learn'); setIsMobileMenuOpen(false); }}
                   icon={<BookOpen />}
                   label="Դասընթացներ"
+                />
+                <MobileNavItem
+                  active={activeTab === 'ai-courses'}
+                  onClick={() => { setActiveTab('ai-courses'); setIsMobileMenuOpen(false); }}
+                  icon={<Sparkles />}
+                  label="ԱԲ դասընթացներ"
                 />
                 <MobileNavItem 
                   active={activeTab === 'paths'} 
