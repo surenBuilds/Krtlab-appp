@@ -17,7 +17,7 @@ Reviewed the repository's top-level build/deployment configuration, Firebase ini
 - **Remaining work:** verify Firebase ID tokens server-side and apply a distributed rate limit/usage quota before treating this endpoint as production-hardened. A per-process limiter alone would not be sufficient for serverless deployment.
 
 ### High — onboarding exposes privileged role selection
-- `src/features/onboarding/OnboardingPage.tsx` lets a new user choose Student, Teacher, or Admin without a visible approval flow.
+- The active onboarding in `src/App.tsx` and the secondary onboarding component previously let a new user choose Student, Teacher, or Admin without a visible approval flow. Public onboarding now defaults to Student and no longer asks for school/institution.
 - **Recommendation:** default public signups to Student; assign teacher/admin privileges through a trusted administrative workflow.
 
 ### Medium — authentication success is not the same as profile completion
@@ -33,12 +33,14 @@ Reviewed the repository's top-level build/deployment configuration, Firebase ini
 - The Firebase client performs a connection probe on a timer and ignores failures, which can create noisy or ambiguous diagnostics.
 
 ## PR changes
-- Hardened the Vercel Gemini API wrapper against malformed and oversized request bodies.
+- Hardened the Vercel Gemini API wrapper against malformed and oversized request bodies and added Firebase ID-token verification via Identity Toolkit.
 - Bounded mentor history and message fields.
 - Removed wildcard CORS headers (same-origin frontend requests do not need them).
 - Kept internal provider error details in server logs and returned a generic error to callers.
+- Fixed the AI course generator course record, persisted generated course data in the user profile, exposed the builder in desktop/mobile navigation, and expanded the lesson schema/display.
+- Added CI to run TypeScript checks and a production build on pull requests.
 
 ## Validation status
 - Source/config review completed.
-- Automated build/typecheck not run in this environment; the GitHub connector can read and commit source but does not execute the repository's npm scripts.
+- GitHub Actions installed dependencies, but the first TypeScript check exposed five existing type errors in career/profile/milestone/intelligence code. Fixes were committed; a fresh CI run is needed to confirm them.
 - Firebase rules were not deployed or changed by this audit PR because they can affect existing client write paths and require a dependency-aware migration.
