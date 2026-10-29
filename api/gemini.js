@@ -138,7 +138,7 @@ export default async function handler(req, res) {
       const hasInvalidMessage = body.messages.some((message) =>
         !message ||
         typeof message !== "object" ||
-        !["user", "assistant", "model"].includes(message.role) ||
+        !["user", "ai", "assistant", "model"].includes(message.role) ||
         typeof message.text !== "string" ||
         message.text.length > MAX_MENTOR_MESSAGE_CHARS
       );
