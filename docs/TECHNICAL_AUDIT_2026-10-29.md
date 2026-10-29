@@ -25,6 +25,11 @@ Reviewed the repository's top-level build/deployment configuration, Firebase ini
 - Google/email auth success is shown before the user profile is necessarily complete. Profile creation/sync relies on the auth-state/profile flow; test new users, returning users, and multiple devices separately.
 - The profile hook merges local data into Firestore when local XP is higher. This needs conflict-resolution tests to ensure a stale local profile cannot overwrite other newer fields.
 
+### Critical — production dependency audit is failing
+- The new CI gate `npm audit --omit=dev --audit-level=critical` currently fails on the branch.
+- The report identifies critical advisories in `protobufjs`, `proxy-addr`, and `websocket-driver` (among additional high/moderate advisories). The lockfile must be regenerated using `npm audit fix` or targeted compatible dependency updates, followed by typecheck/build and a fresh audit.
+- **Release blocker:** do not merge or launch publicly while the critical production dependency audit fails.
+
 ### Medium — project quality gates are incomplete
 - `package.json` has `build` and `lint` scripts but no test script. `lint` runs TypeScript checking; there is no automated test suite configured in the scripts.
 - `README.md` still contains generic AI Studio starter text rather than KrtLab setup, deployment, and environment documentation.
@@ -43,5 +48,5 @@ Reviewed the repository's top-level build/deployment configuration, Firebase ini
 
 ## Validation status
 - Source/config review completed.
-- GitHub Actions passed TypeScript checking and the production build on commit `29d1c59`. Additional changes now add API syntax and production-dependency audit gates; their latest CI run must complete before merge.
+- GitHub Actions passed API syntax checking and TypeScript checking on the latest security-gate run. The production build was skipped because the critical dependency audit failed; CI was reordered so the build runs before the audit on the next run. The dependency audit is a release blocker.
 - Firestore rule changes are included in this PR but have not been deployed. They need a controlled deployment after reviewing existing roles and verifying the preview environment.
