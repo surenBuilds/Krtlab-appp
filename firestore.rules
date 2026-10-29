@@ -69,7 +69,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId);
       allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'student';
-      allow update: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role;
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.get('role', null) == resource.data.get('role', null);
     }
 
     // Lessons collection
