@@ -14,8 +14,8 @@ Reviewed the repository's top-level build/deployment configuration, Firebase ini
 ### High — unauthenticated Gemini API can incur provider costs
 - `api/gemini.js` accepts POST requests without checking Firebase ID tokens, and the handler allows every origin via `Access-Control-Allow-Origin: *`. CORS is not authentication; callers can invoke the endpoint directly.
 - Several handlers pass user-provided text to a paid model. There is no shared/global rate limit visible in this handler.
-- **Mitigation in this PR:** remove the wildcard CORS policy, reject malformed/oversized bodies, bound mentor history, and stop returning raw internal error messages to clients.
-- **Remaining work:** add distributed rate limiting, per-user usage quotas, and cost monitoring before treating this endpoint as fully production-hardened.
+- **Mitigation in this PR:** require a valid Firebase ID token, remove wildcard CORS, reject malformed/oversized bodies, bound mentor history, validate progression feedback against the signed-in UID, and stop returning raw internal error messages to clients. Identity verification fails closed and times out after 8 seconds.
+- **Remaining work:** add distributed rate limiting, per-user usage quotas, and cost monitoring before treating this endpoint as fully production-hardened. Firebase identity lookup is performed per request and must be load-tested.
 
 ### High — onboarding exposes privileged role selection
 - The active onboarding in `src/App.tsx` and the secondary onboarding component previously let a new user choose Student, Teacher, or Admin without a visible approval flow. Public onboarding now defaults to Student and no longer asks for school/institution.
@@ -39,9 +39,9 @@ Reviewed the repository's top-level build/deployment configuration, Firebase ini
 - Removed wildcard CORS headers (same-origin frontend requests do not need them).
 - Kept internal provider error details in server logs and returned a generic error to callers.
 - Fixed the AI course generator course record, persisted generated course data in the user profile, exposed the builder in desktop/mobile navigation, and expanded the lesson schema/display.
-- Added CI to run TypeScript checks and a production build on pull requests.
+- Added CI to check the Vercel API syntax, run TypeScript checks, audit production dependencies for critical vulnerabilities, and build production artifacts on pull requests.
 
 ## Validation status
 - Source/config review completed.
-- GitHub Actions installed dependencies, but the first TypeScript check exposed five existing type errors in career/profile/milestone/intelligence code. Fixes were committed; a fresh CI run is needed to confirm them.
+- GitHub Actions passed TypeScript checking and the production build on commit `29d1c59`. Additional changes now add API syntax and production-dependency audit gates; their latest CI run must complete before merge.
 - Firestore rule changes are included in this PR but have not been deployed. They need a controlled deployment after reviewing existing roles and verifying the preview environment.
