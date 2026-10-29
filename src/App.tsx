@@ -45,7 +45,7 @@ import {
   Wallet, Briefcase, Cpu, FlaskConical, Globe, Scale, 
   Building2, Plane, Truck, Rocket, Factory, RefreshCcw, Map,
   Mic, MicOff, Languages, LogOut, Mail, TestTube2, Gamepad2, Target, Compass,
-  Wand2
+  Wand2, Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
