@@ -27,7 +27,7 @@ jobs:
         run: node --check api/gemini.js
       - name: Typecheck
         run: npm run lint
-      - name: Audit production dependencies for critical vulnerabilities
-        run: npm audit --omit=dev --audit-level=critical
       - name: Build production artifacts
         run: npm run build
+      - name: Audit production dependencies for critical vulnerabilities
+        run: npm audit --omit=dev --audit-level=critical
