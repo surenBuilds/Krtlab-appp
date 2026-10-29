@@ -747,6 +747,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         requiredSkills: decomposition.requiredSkills,
         milestones: decomposition.milestones.map(milestone => ({
           ...milestone,
+          knowledge: milestone.knowledge || [],
           completed: false,
         })),
         learningPlan: decomposition.learningPlan,
