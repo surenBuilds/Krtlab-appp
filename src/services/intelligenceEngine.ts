@@ -147,7 +147,7 @@ export function syncEvidenceFromProgress(profile: GrowthProfile, existingState: 
   const canonicalSkills = (SKILL_DEFINITIONS || []).map((def: any) => {
     const skill = existingSkills.get(def.id) || {};
     const evidence = evidenceBySkill.get(def.id) || skill.evidence || [];
-    const unique = [...new Map(evidence.map((e: SkillEvidence) => [e.sourceId, e])).values()];
+    const unique: SkillEvidence[] = Array.from(new Map<string, SkillEvidence>((evidence as SkillEvidence[]).map((e: SkillEvidence) => [e.sourceId, e])).values());
     const baseline = next.skillBaseline.find((item: any) => item.skillId === def.id);
     const evidencePoints = unique.reduce<number>((sum, e) => sum + (Number(e.points) || 0), 0);
     const currentLevel = Math.min(100, Math.max(
