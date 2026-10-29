@@ -319,6 +319,7 @@ export type UserProfile = {
     skillId: string;
     targetLevel: number;
     content?: any;
+    completedLevels?: number[];
   }>;
 }
 
