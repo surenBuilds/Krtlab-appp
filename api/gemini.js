@@ -46,11 +46,51 @@ const handlers = {
   },
 
   async generateLessonContent(body) {
-    const { category, subfield, level, currentTopic } = body;
-    const prompt = `Ստեղծիր հայերեն դաս "${subfield}" (մակ.${level}): Թեմա: ${currentTopic || subfield}. JSON: {"title":"...","introduction":"...","keyConcepts":["..."],"miniSummary":"..."}. ՄԻԱՅՆ JSON:`;
+    const { category, subfield, level, currentTopic, previousLessons = [], curriculum = [], literature } = body;
+    if (typeof subfield !== "string" || !subfield.trim()) {
+      throw new Error("A course subject is required");
+    }
+    const topic = typeof currentTopic === "string" && currentTopic.trim() ? currentTopic.trim() : subfield;
+    const previous = Array.isArray(previousLessons) ? previousLessons.filter(item => typeof item === "string").slice(-10) : [];
+    const curriculumItems = Array.isArray(curriculum) ? curriculum.filter(item => typeof item === "string").slice(0, 20) : [];
+    const prompt = `Դու KrtLab-ի փորձառու ուսումնական ծրագրերի նախագծողն ես։ Ստեղծիր ամբողջական, գործնական և մանկավարժորեն ճիշտ հայերեն դաս։
+Ուղղություն՝ ${String(category || "ընդհանուր")}
+Դասընթաց՝ ${subfield}
+Մակարդակ՝ ${Math.max(1, Math.min(20, Number(level) || 1))}
+Թեմա՝ ${topic}
+Ուսումնական պլան՝ ${curriculumItems.join("; ") || "Կառուցիր թեմային համապատասխան հաջորդականություն"}
+Նախորդ թեմաներ՝ ${previous.join("; ") || "Չկան"}
+Առաջարկվող աղբյուրներ՝ ${literature ? JSON.stringify(literature).slice(0, 2500) : "Օգտագործիր հաստատված ընդհանուր գիտելիք, մի հորինիր աղբյուրներ"}
+Մի կրկնիր նախորդ թեմաները։ Տեսական մասը պետք է հասկանալի լինի սկսնակին և ներառի իրական կիրառություն։
+Վերադարձիր ՄԻԱՅՆ վավեր JSON՝ այս կառուցվածքով.
+{
+"title":"կարճ և հստակ վերնագիր",
+"introduction":"2-4 նախադասությամբ ներածություն և սովորելու նպատակը",
+"keyConcepts":["3-6 հիմնական հասկացություն"],
+"detailedExplanation":"առնվազն 3 բովանդակալից պարբերություն՝ բացատրություններով և օրինակով",
+"examples":["2 կիրառական օրինակ"],
+"exercises":["2 ինքնուրույն վարժություն"],
+"miniSummary":"կարճ ամփոփում",
+"recommendedReading":[{"title":"աղբյուրի վերնագիր","author":"հեղինակ","description":"ինչու է օգտակար"}],
+"quiz":[{"question":"հարց","options":["տարբերակ A","տարբերակ B","տարբերակ C","տարբերակ D"],"correctAnswer":0,"explanation":"ճիշտ պատասխանի բացատրություն"}],
+"practiceTask":{"id":"practice-1","title":"առաջադրանքի վերնագիր","scenario":"իրատեսական իրավիճակ","context":"համատեքստ","role":"սովորողի դերը","mission":"առաքելություն","constraints":["սահմանափակում"],"instructions":"քայլ առ քայլ հրահանգ","deliverable":"ինչ պետք է ներկայացնել","evaluationCriteria":"գնահատման չափանիշներ"},
+"requiredScore":80
+}
+Ստուգիր, որ correctAnswer-ը options զանգվածի վավեր ինդեքս լինի, և quiz-ը պարունակի առնվազն 3 հարց։ Մի գրիր Markdown code fences։`;
     const text = await generateContent(prompt, "application/json");
-    try { return JSON.parse(text); }
-    catch { return { title: subfield, introduction: "", keyConcepts: [], miniSummary: "" }; }
+    try {
+      const lesson = JSON.parse(text);
+      if (!lesson || typeof lesson !== "object" || typeof lesson.title !== "string" ||
+          typeof lesson.introduction !== "string" || !Array.isArray(lesson.keyConcepts) ||
+          typeof lesson.detailedExplanation !== "string" || !Array.isArray(lesson.quiz) ||
+          lesson.quiz.length < 3 || !Array.isArray(lesson.examples) || !Array.isArray(lesson.exercises)) {
+        throw new Error("Generated lesson did not match the required schema");
+      }
+      return lesson;
+    } catch (error) {
+      console.error("[gemini] Invalid lesson response:", error instanceof Error ? error.message : String(error));
+      throw new Error("Could not generate a valid lesson. Please try again.");
+    }
   },
 
   async generateLessonAudio(body) {
