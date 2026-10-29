@@ -1,15 +1,24 @@
 import { RecommendedLiterature, PracticeLabTask } from "../types";
 import { getCachedAudio, cacheAudio } from "../lib/audioCache";
 import { pcmToWav } from "../lib/audioUtils";
+import { auth } from "../lib/firebase";
 
 // Secure API proxy — calls Vercel serverless /api/gemini/*
 // GEMINI_API_KEY is NEVER exposed to browser — it lives only on server
 
 async function callApi(endpoint: string, body: any): Promise<any> {
   const url = `/api/gemini/${endpoint}`;
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    throw new Error("Մուտք գործեք ձեր հաշիվ՝ ԱԲ գործառույթներն օգտագործելու համար։");
+  }
+  const idToken = await currentUser.getIdToken();
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${idToken}`,
+    },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
