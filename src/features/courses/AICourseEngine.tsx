@@ -8,7 +8,7 @@ import { CATEGORIES } from "../../data/categories";
 import { SKILL_DEFINITIONS, SUBFIELD_SKILL_MAP } from "../../data/skillMappings";
 import { toast } from "sonner";
 
-interface AICourse { id: string; title: string; category: string; subfield: string; totalLevels: number; currentLevel: number; status: "ready"|"generating"|"error"; topics: string[]; skillId: string; targetLevel: number; content?: any; }
+interface AICourse { id: string; title: string; category: string; subfield: string; totalLevels: number; currentLevel: number; status: "ready"|"generating"|"error"; topics: string[]; skillId: string; targetLevel: number; content?: any; completedLevels?: number[]; }
 
 export const AICourseEngine: React.FC = () => {
   const { profile, updateProfile } = useUserProfile();
@@ -53,15 +53,24 @@ export const AICourseEngine: React.FC = () => {
     setQuizScore(score);
     setQuizSubmitted(true);
     if (score >= 80) {
-      updateProfile({
-        xp: (profile?.xp || 0) + 50,
-        points: (profile?.points || 0) + 50,
-      });
-      toast.success(`Թեստը հանձնված է՝ ${score}%. +50 XP`);
+      const alreadyRewarded = activeCourse?.completedLevels?.includes(activeCourse.currentLevel) || false;
+      if (!alreadyRewarded && activeCourse) {
+        updateProfile({
+          xp: (profile?.xp || 0) + 50,
+          points: (profile?.points || 0) + 50,
+        });
+        const updatedCourse = {
+          ...activeCourse,
+          completedLevels: [...(activeCourse.completedLevels || []), activeCourse.currentLevel],
+        };
+        persistCourses(courses.map(course => course.id === activeCourse.id ? updatedCourse : course));
+        setActiveCourse(updatedCourse);
+      }
+      toast.success(alreadyRewarded ? `Թեստը հանձնված է՝ ${score}%։` : `Թեստը հանձնված է՝ ${score}%. +50 XP`);
     } else {
       toast.error(`Արդյունքը՝ ${score}%. Կրկնիր նյութը և փորձիր նորից։`);
     }
-  }, [courseContent, quizSubmitted, selectedAnswers, profile?.xp, profile?.points, updateProfile]);
+  }, [courseContent, quizSubmitted, selectedAnswers, profile?.xp, profile?.points, activeCourse, courses, persistCourses, updateProfile]);
 
   const handleNextLesson = useCallback(async () => {
     if (!activeCourse || quizScore === null || quizScore < 80) return;
@@ -133,7 +142,7 @@ export const AICourseEngine: React.FC = () => {
       title: `${skill.name} — ${activeGoal.title}`,
       category: cat.id,
       subfield: sub.id,
-      totalLevels: Math.min(20, sub.courseTopics?.length || 5),
+      totalLevels: Math.min(5, sub.courseTopics?.length || 5),
       currentLevel: 0,
       status: "generating",
       topics: sub.courseTopics?.slice(0, 5) || [skill.name],
