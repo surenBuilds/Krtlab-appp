@@ -3,8 +3,27 @@
 // GEMINI_API_KEY is read from server-side environment only
 
 import { GoogleGenAI } from "@google/genai";
+import firebaseConfig from "../firebase-applet-config.json" with { type: "json" };
 
 const MODEL = "gemini-2.5-flash";
+
+async function verifyFirebaseUser(req) {
+  const authorization = req.headers?.authorization || req.headers?.Authorization;
+  if (typeof authorization !== "string" || !authorization.startsWith("Bearer ")) return null;
+  const idToken = authorization.slice(7).trim();
+  if (!idToken || idToken.length > 10_000) return null;
+
+  const apiKey = process.env.FIREBASE_API_KEY || firebaseConfig.apiKey;
+  const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(apiKey)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idToken }),
+  });
+  if (!response.ok) return null;
+  const data = await response.json();
+  const user = Array.isArray(data.users) ? data.users[0] : null;
+  return user && typeof user.localId === "string" ? user.localId : null;
+}
 
 function getClient() {
   const key = process.env.GEMINI_API_KEY || "";
@@ -154,6 +173,11 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
 
   try {
+    const firebaseUid = await verifyFirebaseUser(req);
+    if (!firebaseUid) {
+      return res.status(401).json({ error: "Please sign in to use AI features" });
+    }
+
     const body = req.body;
     if (!body || typeof body !== "object" || Array.isArray(body)) {
       return res.status(400).json({ error: "A JSON object body is required" });
