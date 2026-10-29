@@ -304,6 +304,9 @@ export type UserProfile = {
   labXp?: number;
   labStreak?: number;
   intelligenceState?: IntelligenceState;
+  // Legacy compatibility fields populated by the intelligence engine.
+  skills?: any[];
+  mastery?: any[];
   aiCourses?: Array<{
     id: string;
     title: string;
