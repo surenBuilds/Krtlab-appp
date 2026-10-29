@@ -304,6 +304,19 @@ export type UserProfile = {
   labXp?: number;
   labStreak?: number;
   intelligenceState?: IntelligenceState;
+  aiCourses?: Array<{
+    id: string;
+    title: string;
+    category: string;
+    subfield: string;
+    totalLevels: number;
+    currentLevel: number;
+    status: "ready" | "generating" | "error";
+    topics: string[];
+    skillId: string;
+    targetLevel: number;
+    content?: any;
+  }>;
 }
 
 export type PracticeSubmission = {
