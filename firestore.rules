@@ -90,7 +90,62 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // 4. Discussions collection
+    // 4. Growth OS private learner data and applications
+    match /users/{userId}/growthOS/{docId} {
+      allow read, create, update: if isOwner(userId);
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    match /users/{userId}/applications/{applicationId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) &&
+        request.resource.data.opportunityId is string &&
+        request.resource.data.title is string &&
+        request.resource.data.status == "submitted";
+      allow update, delete: if isOwner(userId) || isAdmin();
+    }
+
+    // 5. Public catalog: only administrators can publish or modify listings.
+    match /courses/{courseId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /opportunities/{opportunityId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // User-submitted listings are private until reviewed by an administrator.
+    match /courseSubmissions/{submissionId} {
+      allow create: if isSignedIn() &&
+        request.resource.data.ownerId == request.auth.uid &&
+        request.resource.data.status == "pending_review" &&
+        request.resource.data.title is string &&
+        request.resource.data.title.size() > 0 &&
+        request.resource.data.title.size() <= 160 &&
+        request.resource.data.description is string &&
+        request.resource.data.description.size() <= 5000;
+      allow read: if isAdmin() || (isSignedIn() && resource.data.ownerId == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
+    match /opportunitySubmissions/{submissionId} {
+      allow create: if isSignedIn() &&
+        request.resource.data.ownerId == request.auth.uid &&
+        request.resource.data.status == "pending_verification" &&
+        request.resource.data.title is string &&
+        request.resource.data.title.size() > 0 &&
+        request.resource.data.title.size() <= 160 &&
+        request.resource.data.organization is string &&
+        request.resource.data.organization.size() > 0 &&
+        request.resource.data.description is string &&
+        request.resource.data.description.size() <= 5000;
+      allow read: if isAdmin() || (isSignedIn() && resource.data.ownerId == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
+    // 6. Discussions collection
     match /discussions/{msgId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && 
