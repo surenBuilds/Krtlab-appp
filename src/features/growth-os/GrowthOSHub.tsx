@@ -135,7 +135,8 @@ export const GrowthOSHub: React.FC<{ initialTab?: (typeof tabs)[number]["id"] }>
       const prompt = `Դու KrtLab-ի ուսումնական գնահատողն ես։ Գնահատիր սովորողի ներկայացրած աշխատանքը ըստ չափանիշի։ Փուլ՝ ${m.title}. Չափանիշ՝ ${m.assessment}. Ապացույց՝ ${evidence}. Վերադարձիր միայն JSON՝ {"score":0-100,"feedback":"կոնկրետ հայերեն հետադարձ կապ","passed":true|false}. passed=true միայն եթե ապացույցը բավարարում է չափանիշների մեծ մասին, score >= 75։ Մի պնդիր, որ ստուգել ես չտրամադրված ֆայլեր կամ արտաքին հղումներ։`;
       const raw = await chatWithMentor([{ role: "user", text: prompt }], userName);
       const result = extractJson<{ score: number; feedback: string; passed: boolean }>(raw);
-      const score = Math.max(0, Math.min(100, Number(result.score) || 0));\n      const normalized = { score, feedback: String(result.feedback || ""), passed: Boolean(result.passed) && score >= 75 };
+      const score = Math.max(0, Math.min(100, Number(result.score) || 0));
+      const normalized = { score, feedback: String(result.feedback || ""), passed: Boolean(result.passed) && score >= 75 };
       const nextResults = { ...assessmentResults, [m.id]: normalized };
       const nextRoadmap = { ...roadmap, milestones: roadmap.milestones.map(item => item.id === m.id ? { ...item, evidence, completed: normalized.passed ? item.completed : false } : item) };
       setAssessmentResults(nextResults);
