@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { collection, doc, getDoc, getDocs, setDoc, addDoc, serverTimestamp, query, where, updateDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, setDoc, addDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
 import { chatWithMentor } from "../services/geminiService";
 import { useUserProfile } from "../hooks/useUserProfile";
@@ -14,7 +14,8 @@ const tabs = [
   { id: "roadmap", label: "Իմ ճանապարհային քարտեզը", icon: Map },
   { id: "courses", label: "Դասընթացների շուկա", icon: Store },
   { id: "opportunities", label: "Աշխատանք և հնարավորություններ", icon: Briefcase },
-  { id: "credentials", label: "Որակավորում", icon: Award },\n  { id: "review", label: "Մոդերացիա", icon: ShieldCheck },
+  { id: "credentials", label: "Որակավորում", icon: Award },
+  { id: "review", label: "Մոդերացիա", icon: ShieldCheck },
 ] as const;
 
 function extractJson<T>(raw: string): T {
@@ -30,7 +31,9 @@ export const GrowthOSHub: React.FC<{ initialTab?: (typeof tabs)[number]["id"] }>
   const [tab, setTab] = useState<(typeof tabs)[number]["id"]>(initialTab);
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
   const [courses, setCourses] = useState<PublicItem[]>([]);
-  const [opportunities, setOpportunities] = useState<PublicItem[]>([]);\n  const [pendingCourses, setPendingCourses] = useState<PublicItem[]>([]);\n  const [pendingOpportunities, setPendingOpportunities] = useState<PublicItem[]>([]);
+  const [opportunities, setOpportunities] = useState<PublicItem[]>([]);
+  const [pendingCourses, setPendingCourses] = useState<PublicItem[]>([]);
+  const [pendingOpportunities, setPendingOpportunities] = useState<PublicItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [goal, setGoal] = useState("");
@@ -51,10 +54,12 @@ export const GrowthOSHub: React.FC<{ initialTab?: (typeof tabs)[number]["id"] }>
       if (!uid) { setLoading(false); return; }
       try {
         const ownRef = doc(db, "users", uid, "growthOS", "main");
-        const [own, courseSnap, opportunitySnap] = await Promise.all([
+        const [own, courseSnap, opportunitySnap, courseQueue, opportunityQueue] = await Promise.all([
           getDoc(ownRef),
           getDocs(collection(db, "courses")),
           getDocs(collection(db, "opportunities")),
+          isAdmin ? getDocs(collection(db, "courseSubmissions")) : Promise.resolve(null),
+          isAdmin ? getDocs(collection(db, "opportunitySubmissions")) : Promise.resolve(null),
         ]);
         if (!active) return;
         if (own.exists()) {
@@ -63,7 +68,9 @@ export const GrowthOSHub: React.FC<{ initialTab?: (typeof tabs)[number]["id"] }>
           setAssessmentResults(data.assessmentResults || {});
         }
         setCourses(courseSnap.docs.map(d => ({ id: d.id, ...d.data() } as PublicItem)));
-        setOpportunities(opportunitySnap.docs.map(d => ({ id: d.id, ...d.data() } as PublicItem)));\n        setPendingCourses(courseQueue ? courseQueue.docs.filter(d => d.data().status === "pending_review").map(d => ({ id: d.id, ...d.data() } as PublicItem)) : []);\n        setPendingOpportunities(opportunityQueue ? opportunityQueue.docs.filter(d => d.data().status === "pending_verification").map(d => ({ id: d.id, ...d.data() } as PublicItem)) : []);
+        setOpportunities(opportunitySnap.docs.map(d => ({ id: d.id, ...d.data() } as PublicItem)));
+        setPendingCourses(courseQueue ? courseQueue.docs.filter(d => d.data().status === "pending_review").map(d => ({ id: d.id, ...d.data() } as PublicItem)) : []);
+        setPendingOpportunities(opportunityQueue ? opportunityQueue.docs.filter(d => d.data().status === "pending_verification").map(d => ({ id: d.id, ...d.data() } as PublicItem)) : []);
       } catch (error) {
         console.error("Growth OS load failed", error);
         toast.error("Տվյալները բեռնել չհաջողվեց։ Ստուգեք մուտքն ու Firestore-ի կանոնները։");
@@ -112,7 +119,9 @@ export const GrowthOSHub: React.FC<{ initialTab?: (typeof tabs)[number]["id"] }>
 
   async function toggleMilestone(milestoneId: string) {
     if (!roadmap) return;
-    const target = roadmap.milestones.find(m => m.id === milestoneId);\n    if (target && !target.completed && !assessmentResults[milestoneId]?.passed) { toast.info("Փուլն ավարտելուց առաջ ներկայացրեք աշխատանքը և անցեք գնահատումը։"); return; }\n    const next = { ...roadmap, milestones: roadmap.milestones.map(m => m.id === milestoneId ? { ...m, completed: !m.completed } : m) };
+    const target = roadmap.milestones.find(m => m.id === milestoneId);
+    if (target && !target.completed && !assessmentResults[milestoneId]?.passed) { toast.info("Փուլն ավարտելուց առաջ ներկայացրեք աշխատանքը և անցեք գնահատումը։"); return; }
+    const next = { ...roadmap, milestones: roadmap.milestones.map(m => m.id === milestoneId ? { ...m, completed: !m.completed } : m) };
     next.status = next.milestones.every(m => m.completed) ? "completed" : "active";
     try { await persist(next); toast.success("Առաջընթացը պահպանվեց։"); }
     catch { toast.error("Առաջընթացը պահպանել չհաջողվեց։"); }
@@ -127,8 +136,10 @@ export const GrowthOSHub: React.FC<{ initialTab?: (typeof tabs)[number]["id"] }>
       const result = extractJson<{ score: number; feedback: string; passed: boolean }>(raw);
       const normalized = { score: Math.max(0, Math.min(100, Number(result.score) || 0)), feedback: String(result.feedback || ""), passed: Boolean(result.passed) };
       const nextResults = { ...assessmentResults, [m.id]: normalized };
+      const nextRoadmap = { ...roadmap, milestones: roadmap.milestones.map(item => item.id === m.id ? { ...item, evidence } : item) };
       setAssessmentResults(nextResults);
-      await setDoc(doc(db, "users", uid!, "growthOS", "main"), { assessmentResults: nextResults, updatedAt: serverTimestamp() }, { merge: true });
+      await setDoc(doc(db, "users", uid!, "growthOS", "main"), { roadmap: nextRoadmap, assessmentResults: nextResults, updatedAt: serverTimestamp() }, { merge: true });
+      setRoadmap(nextRoadmap);
       if (normalized.passed) toast.success("Գնահատումն անցած է։ Փուլը կարող եք նշել ավարտված։");
       else toast.info("Ստացվել է հետադարձ կապ․ բարելավեք աշխատանքը և կրկին ներկայացրեք։");
     } catch (error) { toast.error(error instanceof Error ? error.message : "Գնահատումը ձախողվեց։"); }
