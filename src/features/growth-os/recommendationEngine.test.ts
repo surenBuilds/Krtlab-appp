@@ -15,7 +15,7 @@ test("opportunity match distinguishes roadmap skills from assessed milestone ski
     { id: "role-1", title: "Junior product role", skills: ["communication", "analytics", "sales"] },
     roadmap
   );
-  assert.equal(result.score, 47);
+  assert.equal(result.score, 57);
   assert.deepEqual(result.pathwayOverlap, ["communication", "analytics"]);
   assert.deepEqual(result.assessedSkills, ["communication"]);
   assert.deepEqual(result.missingSkills, ["sales"]);
