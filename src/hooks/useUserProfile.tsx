@@ -111,6 +111,7 @@ const INITIAL_PROFILE: UserProfile = {
 
 interface UserContextType {
   profile: UserProfile | null;
+  isAdmin: boolean;
   updateProfile: (updates: Partial<UserProfile>) => void;
   updateProgress: (categoryId: string, subfieldId: string, levelId: number, score?: number, stepType?: 'lesson' | 'practice' | 'game') => void;
   updateAdaptiveProgress: (lessonId: string, analysis: any) => void;
@@ -908,7 +909,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <UserContext.Provider value={{ 
-      profile, updateProfile, updateProgress, updateAdaptiveProgress, addFlashcards, updateFlashcardSRS, 
+      profile, isAdmin: profile?.role === 'admin', updateProfile, updateProgress, updateAdaptiveProgress, addFlashcards, updateFlashcardSRS, 
       resetProgress, completeDiscovery, toggleDailyTask, completePracticeProject, recordProject, 
       updateGameScore, updateCustomGoal, activateGoal, submitPracticeWork,
       updateXp, updateIntelligenceState, toggleDemoMode, updateRole, syncNow,
