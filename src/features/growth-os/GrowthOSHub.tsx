@@ -25,9 +25,9 @@ function extractJson<T>(raw: string): T {
   return JSON.parse(cleaned.slice(start, end + 1)) as T;
 }
 
-export const GrowthOSHub: React.FC = () => {
+export const GrowthOSHub: React.FC<{ initialTab?: (typeof tabs)[number]["id"] }> = ({ initialTab = "roadmap" }) => {
   const { profile } = useUserProfile();
-  const [tab, setTab] = useState<(typeof tabs)[number]["id"]>("roadmap");
+  const [tab, setTab] = useState<(typeof tabs)[number]["id"]>(initialTab);
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
   const [courses, setCourses] = useState<PublicItem[]>([]);
   const [opportunities, setOpportunities] = useState<PublicItem[]>([]);
@@ -112,7 +112,7 @@ export const GrowthOSHub: React.FC = () => {
 
   async function toggleMilestone(milestoneId: string) {
     if (!roadmap) return;
-    const next = { ...roadmap, milestones: roadmap.milestones.map(m => m.id === milestoneId ? { ...m, completed: !m.completed } : m) };
+    const target = roadmap.milestones.find(m => m.id === milestoneId);\n    if (target && !target.completed && !assessmentResults[milestoneId]?.passed) { toast.info("Փուլն ավարտելուց առաջ ներկայացրեք աշխատանքը և անցեք գնահատումը։"); return; }\n    const next = { ...roadmap, milestones: roadmap.milestones.map(m => m.id === milestoneId ? { ...m, completed: !m.completed } : m) };
     next.status = next.milestones.every(m => m.completed) ? "completed" : "active";
     try { await persist(next); toast.success("Առաջընթացը պահպանվեց։"); }
     catch { toast.error("Առաջընթացը պահպանել չհաջողվեց։"); }
