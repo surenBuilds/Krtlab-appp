@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { collection, doc, getDoc, getDocs, setDoc, addDoc, serverTimestamp, updateDoc } from "firebase/firestore";
-import { auth, db } from "../lib/firebase";
-import { chatWithMentor } from "../services/geminiService";
-import { useUserProfile } from "../hooks/useUserProfile";
+import { auth, db } from "../../lib/firebase";
+import { chatWithMentor } from "../../services/geminiService";
+import { useUserProfile } from "../../hooks/useUserProfile";
 import { toast } from "sonner";
 import { Sparkles, Target, Map, BookOpen, Award, Briefcase, Store, Loader2, CheckCircle2, Circle, Plus, ShieldCheck, Clock3 } from "lucide-react";
 
