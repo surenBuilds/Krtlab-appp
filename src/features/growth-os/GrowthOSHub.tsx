@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { collection, doc, getDoc, getDocs, setDoc, addDoc, serverTimestamp, query, where } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, setDoc, addDoc, serverTimestamp, query, where, updateDoc } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
 import { chatWithMentor } from "../services/geminiService";
 import { useUserProfile } from "../hooks/useUserProfile";
@@ -14,7 +14,7 @@ const tabs = [
   { id: "roadmap", label: "Իմ ճանապարհային քարտեզը", icon: Map },
   { id: "courses", label: "Դասընթացների շուկա", icon: Store },
   { id: "opportunities", label: "Աշխատանք և հնարավորություններ", icon: Briefcase },
-  { id: "credentials", label: "Որակավորում", icon: Award },
+  { id: "credentials", label: "Որակավորում", icon: Award },\n  { id: "review", label: "Մոդերացիա", icon: ShieldCheck },
 ] as const;
 
 function extractJson<T>(raw: string): T {
@@ -26,11 +26,11 @@ function extractJson<T>(raw: string): T {
 }
 
 export const GrowthOSHub: React.FC<{ initialTab?: (typeof tabs)[number]["id"] }> = ({ initialTab = "roadmap" }) => {
-  const { profile } = useUserProfile();
+  const { profile, isAdmin } = useUserProfile();
   const [tab, setTab] = useState<(typeof tabs)[number]["id"]>(initialTab);
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
   const [courses, setCourses] = useState<PublicItem[]>([]);
-  const [opportunities, setOpportunities] = useState<PublicItem[]>([]);
+  const [opportunities, setOpportunities] = useState<PublicItem[]>([]);\n  const [pendingCourses, setPendingCourses] = useState<PublicItem[]>([]);\n  const [pendingOpportunities, setPendingOpportunities] = useState<PublicItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [goal, setGoal] = useState("");
@@ -63,7 +63,7 @@ export const GrowthOSHub: React.FC<{ initialTab?: (typeof tabs)[number]["id"] }>
           setAssessmentResults(data.assessmentResults || {});
         }
         setCourses(courseSnap.docs.map(d => ({ id: d.id, ...d.data() } as PublicItem)));
-        setOpportunities(opportunitySnap.docs.map(d => ({ id: d.id, ...d.data() } as PublicItem)));
+        setOpportunities(opportunitySnap.docs.map(d => ({ id: d.id, ...d.data() } as PublicItem)));\n        setPendingCourses(courseQueue ? courseQueue.docs.filter(d => d.data().status === "pending_review").map(d => ({ id: d.id, ...d.data() } as PublicItem)) : []);\n        setPendingOpportunities(opportunityQueue ? opportunityQueue.docs.filter(d => d.data().status === "pending_verification").map(d => ({ id: d.id, ...d.data() } as PublicItem)) : []);
       } catch (error) {
         console.error("Growth OS load failed", error);
         toast.error("Տվյալները բեռնել չհաջողվեց։ Ստուգեք մուտքն ու Firestore-ի կանոնները։");
@@ -71,7 +71,7 @@ export const GrowthOSHub: React.FC<{ initialTab?: (typeof tabs)[number]["id"] }>
     }
     load();
     return () => { active = false; };
-  }, [uid]);
+  }, [uid, isAdmin]);
 
   const completedCount = useMemo(() => roadmap?.milestones.filter(m => m.completed).length || 0, [roadmap]);
   const progress = roadmap?.milestones.length ? Math.round(completedCount / roadmap.milestones.length * 100) : 0;
@@ -155,6 +155,23 @@ export const GrowthOSHub: React.FC<{ initialTab?: (typeof tabs)[number]["id"] }>
     } catch { toast.error("Առաջարկը ուղարկել չհաջողվեց։"); }
   }
 
+  async function reviewSubmission(kind: "course" | "opportunity", item: PublicItem, approve: boolean) {
+    if (!isAdmin) return;
+    const source = kind === "course" ? "courseSubmissions" : "opportunitySubmissions";
+    const destination = kind === "course" ? "courses" : "opportunities";
+    try {
+      if (approve) await setDoc(doc(db, destination, item.id), { ...item, status: "published", publishedAt: serverTimestamp() });
+      await updateDoc(doc(db, source, item.id), { status: approve ? "approved" : "rejected", reviewedAt: serverTimestamp() });
+      if (kind === "course") setPendingCourses(items => items.filter(x => x.id !== item.id));
+      else setPendingOpportunities(items => items.filter(x => x.id !== item.id));
+      if (approve) {
+        if (kind === "course") setCourses(items => [...items, { ...item, status: "published" }]);
+        else setOpportunities(items => [...items, { ...item, status: "published" }]);
+      }
+      toast.success(approve ? "Հայտարարությունը հաստատվեց և հրապարակվեց։" : "Առաջարկը մերժվեց։");
+    } catch { toast.error("Մոդերացիայի գործողությունը չհաջողվեց։"); }
+  }
+
   async function applyToOpportunity(item: PublicItem) {
     if (!uid) return;
     try {
@@ -173,7 +190,7 @@ export const GrowthOSHub: React.FC<{ initialTab?: (typeof tabs)[number]["id"] }>
       <p className="text-slate-300 mt-3 max-w-3xl">Անհատական ուղի, գործնական ուսուցում, ապացույցների գնահատում և հաստատված հնարավորություններ՝ մեկ համակարգում։</p>
       {roadmap && <div className="mt-6 max-w-xl"><div className="flex justify-between text-xs mb-2"><span>Ընթացիկ ուղու առաջընթաց</span><b>{progress}%</b></div><div className="h-2 bg-white/15 rounded-full overflow-hidden"><div className="h-full bg-cyan-400 rounded-full" style={{ width: `${progress}%` }}/></div></div>}
     </header>
-    <nav className="flex gap-2 overflow-x-auto pb-1">{tabs.map(item => { const Icon = item.icon; return <button key={item.id} onClick={() => setTab(item.id)} className={`px-4 py-3 rounded-xl whitespace-nowrap text-sm font-bold flex items-center gap-2 ${tab === item.id ? "bg-slate-900 text-white" : "bg-white border text-slate-600 hover:bg-slate-50"}`}><Icon size={16}/>{item.label}</button>; })}</nav>
+    <nav className="flex gap-2 overflow-x-auto pb-1">{tabs.filter(item => item.id !== "review" || isAdmin).map(item => { const Icon = item.icon; return <button key={item.id} onClick={() => setTab(item.id)} className={`px-4 py-3 rounded-xl whitespace-nowrap text-sm font-bold flex items-center gap-2 ${tab === item.id ? "bg-slate-900 text-white" : "bg-white border text-slate-600 hover:bg-slate-50"}`}><Icon size={16}/>{item.label}</button>; })}</nav>
 
     {tab === "roadmap" && <section className="space-y-6">
       {!roadmap && <form onSubmit={generateRoadmap} className="bg-white rounded-3xl border p-6 md:p-8 space-y-4">
@@ -201,6 +218,14 @@ export const GrowthOSHub: React.FC<{ initialTab?: (typeof tabs)[number]["id"] }>
     {tab === "opportunities" && <section className="grid lg:grid-cols-2 gap-6">
       <div className="space-y-4"><h2 className="text-xl font-black">Հաստատված հնարավորություններ</h2>{opportunities.length ? opportunities.map(o=><article key={o.id} className="bg-white border rounded-2xl p-5"><div className="flex justify-between gap-3"><h3 className="font-black">{o.title}</h3><span className="text-xs bg-cyan-50 text-cyan-800 rounded-full px-2 py-1 h-fit">{o.type}</span></div><p className="text-xs text-slate-500 mt-1">{o.organization}</p><p className="text-sm mt-3">{o.description}</p>{o.eligibility&&<p className="text-xs text-amber-700 mt-2">Պահանջներ՝ {o.eligibility}</p>}<p className="text-xs text-slate-500 mt-2">Հմտություններ՝ {(o.skills||[]).join(", ")}</p><button onClick={()=>applyToOpportunity(o)} className="mt-4 px-4 py-2 rounded-lg bg-slate-950 text-white text-sm font-bold">Պահպանել հետաքրքրությունը</button></article>) : <EmptyState text="Հաստատված հնարավորություններ դեռ չկան։ Կեղծ հայտարարություններ չեն ցուցադրվում։"/>}</div>
       <form onSubmit={submitOpportunity} className="bg-white border rounded-3xl p-6 space-y-3"><h2 className="font-black text-lg flex gap-2"><Plus/> Առաջարկել հնարավորություն</h2><input required placeholder="Հնարավորության անվանում" value={opportunityDraft.title} onChange={e=>setOpportunityDraft({...opportunityDraft,title:e.target.value})} className="w-full border rounded-xl p-3"/><input required placeholder="Կազմակերպություն" value={opportunityDraft.organization} onChange={e=>setOpportunityDraft({...opportunityDraft,organization:e.target.value})} className="w-full border rounded-xl p-3"/><select value={opportunityDraft.type} onChange={e=>setOpportunityDraft({...opportunityDraft,type:e.target.value})} className="w-full border rounded-xl p-3"><option>Կամավորություն</option><option>Պրակտիկա</option><option>Երիտասարդական ծրագիր</option><option>Աշխատանք</option><option>Նախագծային համագործակցություն</option></select><textarea required placeholder="Նկարագրություն" value={opportunityDraft.description} onChange={e=>setOpportunityDraft({...opportunityDraft,description:e.target.value})} className="w-full border rounded-xl p-3" rows={3}/><input placeholder="Տարիքային/մասնակցության պայմաններ" value={opportunityDraft.eligibility} onChange={e=>setOpportunityDraft({...opportunityDraft,eligibility:e.target.value})} className="w-full border rounded-xl p-3"/><input placeholder="Պահանջվող հմտություններ" value={opportunityDraft.skills} onChange={e=>setOpportunityDraft({...opportunityDraft,skills:e.target.value})} className="w-full border rounded-xl p-3"/><p className="text-xs text-slate-500">Յուրաքանչյուր հայտարարություն անցնում է կազմակերպության և անվտանգության ստուգում։</p><button className="bg-slate-950 text-white rounded-xl px-5 py-3 font-bold">Ուղարկել ստուգման</button></form>
+    </section>}
+
+    {tab === "review" && isAdmin && <section className="space-y-6">
+      <div><h2 className="text-2xl font-black">Հրապարակումների մոդերացիա</h2><p className="text-sm text-slate-500 mt-1">Միայն ադմինիստրատորը կարող է հաստատել հանրային կատալոգում ցուցադրվող առաջարկները։</p></div>
+      <div className="grid lg:grid-cols-2 gap-6">
+        <div className="space-y-3"><h3 className="font-black">Դասընթացներ ({pendingCourses.length})</h3>{pendingCourses.map(item=><article key={item.id} className="bg-white border rounded-2xl p-5"><h4 className="font-black">{item.title}</h4><p className="text-sm text-slate-600 mt-2">{item.description}</p><p className="text-xs text-slate-400 mt-2">Հեղինակ՝ {(item as any).creatorName || "չնշված"}</p><div className="flex gap-2 mt-4"><button onClick={()=>reviewSubmission("course",item,true)} className="px-4 py-2 bg-emerald-700 text-white rounded-lg text-xs font-bold">Հաստատել</button><button onClick={()=>reviewSubmission("course",item,false)} className="px-4 py-2 border rounded-lg text-xs font-bold">Մերժել</button></div></article>)}{!pendingCourses.length&&<EmptyState text="Սպասող դասընթացներ չկան։"/>}</div>
+        <div className="space-y-3"><h3 className="font-black">Հնարավորություններ ({pendingOpportunities.length})</h3>{pendingOpportunities.map(item=><article key={item.id} className="bg-white border rounded-2xl p-5"><h4 className="font-black">{item.title}</h4><p className="text-xs text-slate-500 mt-1">{item.organization}</p><p className="text-sm text-slate-600 mt-2">{item.description}</p><p className="text-xs text-amber-700 mt-2">Պայմաններ՝ {item.eligibility || "նշված չեն"}</p><div className="flex gap-2 mt-4"><button onClick={()=>reviewSubmission("opportunity",item,true)} className="px-4 py-2 bg-emerald-700 text-white rounded-lg text-xs font-bold">Հաստատել</button><button onClick={()=>reviewSubmission("opportunity",item,false)} className="px-4 py-2 border rounded-lg text-xs font-bold">Մերժել</button></div></article>)}{!pendingOpportunities.length&&<EmptyState text="Սպասող հնարավորություններ չկան։"/>}</div>
+      </div>
     </section>}
 
     {tab === "credentials" && <section className="bg-white border rounded-3xl p-6 md:p-8 space-y-4"><div className="flex gap-3 items-center"><Award className="text-cyan-700" size={28}/><div><h2 className="text-xl font-black">KrtLab որակավորման կենտրոն</h2><p className="text-sm text-slate-500">Ապացույցների վրա հիմնված գնահատում</p></div></div><p className="text-sm text-slate-600">Որակավորման ընթացակարգը պետք է ներառի գործնական նախագիծ, չափանիշներով գնահատում և մարդկային վերանայում։ Ճանապարհային քարտեզի ավարտը ինքնին մասնագիտական որակավորում չի տալիս։</p><div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">KrtLab-ի ներքին գնահատման արդյունքները չեն համարվում պետական կամ արտաքին հավատարմագրված որակավորում։ Այս պահին պաշտոնական հավաստագրի տրամադրումը միացված չէ։</div><div className="space-y-2"><p className="font-bold text-sm">Ճանապարհի վիճակ</p><p className="text-sm text-slate-600">{roadmap ? `${completedCount}/${roadmap.milestones.length} փուլ ավարտված · ${progress}%` : "Դեռ ճանապարհային քարտեզ չկա։"}</p>{roadmap?.milestones.map(m=><div key={m.id} className="flex justify-between text-sm border-b py-2"><span>{m.title}</span><span>{assessmentResults[m.id]?.passed ? "Գնահատումն անցած է" : "Գնահատումը հաստատված չէ"}</span></div>)}</div></section>}
