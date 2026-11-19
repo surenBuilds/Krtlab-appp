@@ -27,7 +27,8 @@ function extractJson<T>(raw: string): T {
 }
 
 export const GrowthOSHub: React.FC<{ initialTab?: (typeof tabs)[number]["id"] }> = ({ initialTab = "roadmap" }) => {
-  const { profile, isAdmin } = useUserProfile();
+  const { profile } = useUserProfile();
+  const isAdmin = profile?.role === "admin";
   const [tab, setTab] = useState<(typeof tabs)[number]["id"]>(initialTab);
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
   const [courses, setCourses] = useState<PublicItem[]>([]);
