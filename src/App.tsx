@@ -32,6 +32,7 @@ import { CareerCenter } from './components/CareerCenter';
 import { OrganizationDashboard } from './components/OrganizationDashboard';
 import { DeveloperPlatform } from './components/DeveloperPlatform';
 import { GrowthDashboard } from './components/GrowthDashboard';
+import { GrowthOSHub } from './features/growth-os/GrowthOSHub';
 import { CommandCenter } from './components/CommandCenter';
 import { GoalSystem } from './components/GoalSystem';
 import { MonetizationSystem } from './components/MonetizationSystem';
@@ -78,7 +79,7 @@ export default function App() {
   } = useUserProfile();
   const { preGenerate } = useLessons();
   const { t, language, setLanguage } = useTranslation();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'learn' | 'flashcards' | 'paths' | 'games' | 'goals' | 'creator' | 'lab' | 'school' | 'module' | 'mentor-marketplace' | 'course-marketplace' | 'skill-graph' | 'portfolio' | 'career-center' | 'org-dashboard' | 'dev-platform' | 'monetization' | 'leaderboard' | 'growth-dashboard' | 'goals-system' | 'command-center'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'learn' | 'flashcards' | 'paths' | 'games' | 'goals' | 'creator' | 'lab' | 'school' | 'module' | 'mentor-marketplace' | 'course-marketplace' | 'skill-graph' | 'portfolio' | 'career-center' | 'org-dashboard' | 'dev-platform' | 'monetization' | 'leaderboard' | 'growth-dashboard' | 'goals-system' | 'command-center' | 'growth-os'>('dashboard');
   const [labTopic, setLabTopic] = useState<{ field: string, topic: string } | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
@@ -433,6 +434,12 @@ export default function App() {
             onClick={() => setActiveTab('leaderboard')}
             icon={<Trophy size={16} />}
             label="Leaderboard"
+          />
+          <NavItem 
+            active={activeTab === 'growth-os'} 
+            onClick={() => setActiveTab('growth-os')}
+            icon={<Target size={16} />}
+            label="KrtLab Growth OS"
           />
           <NavItem 
             active={activeTab === 'growth-dashboard'} 
@@ -1121,7 +1128,7 @@ export default function App() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
               >
-                <CourseMarketplace />
+                <GrowthOSHub initialTab="courses" />
               </motion.div>
             )}
 
@@ -1154,7 +1161,7 @@ export default function App() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
               >
-                <CareerCenter />
+                <GrowthOSHub initialTab="opportunities" />
               </motion.div>
             )}
 
@@ -1196,6 +1203,8 @@ export default function App() {
                 <Leaderboard />
               </motion.div>
             )}
+
+            {activeTab === 'growth-os' && <GrowthOSHub />}
 
             {activeTab === 'growth-dashboard' && (
               <motion.div key="growth-dashboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
@@ -1290,6 +1299,12 @@ export default function App() {
                   onClick={() => { setActiveTab('dashboard'); setIsMobileMenuOpen(false); }}
                   icon={<LayoutDashboard />}
                   label="Գլխավոր"
+                />
+                <MobileNavItem
+                  active={activeTab === 'growth-os'}
+                  onClick={() => { setActiveTab('growth-os'); setIsMobileMenuOpen(false); }}
+                  icon={<Target />}
+                  label="KrtLab Growth OS"
                 />
                 <MobileNavItem 
                   active={activeTab === 'learn'} 
