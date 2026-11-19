@@ -2,29 +2,42 @@
   "entities": {
     "User": {
       "title": "User",
-      "description": "User profile and progress data",
+      "description": "User profile, progress, and gamification data",
       "type": "object",
       "properties": {
-        "name": { "type": "string" },
+        "name": { "type": "string", "maxLength": 100 },
         "email": { "type": "string", "format": "email" },
-        "school": { "type": "string" },
+        "school": { "type": "string", "maxLength": 200 },
         "createdAt": { "type": "string", "format": "date-time" },
         "lastActive": { "type": "string", "format": "date-time" },
         "xp": { "type": "integer" },
         "level": { "type": "integer" },
+        "role": { "type": "string", "enum": ["student", "teacher", "admin"] },
         "points": { "type": "integer" },
         "progress": { "type": "object" },
         "streak": { "type": "integer" },
-        "achievements": { "type": "array", "items": { "type": "string" } }
+        "achievements": { "type": "array" }
       },
       "required": ["name", "createdAt", "lastActive", "xp", "level"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Admin identity whitelist records",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "assignedAt": { "type": "string", "format": "date-time" },
+        "assignedBy": { "type": "string" }
+      },
+      "required": ["uid", "assignedAt"]
     },
     "Lesson": {
       "title": "Lesson",
       "description": "AI-generated educational lesson content",
       "type": "object",
       "properties": {
-        "title": { "type": "string" },
+        "title": { "type": "string", "maxLength": 500 },
         "topicId": { "type": "string" },
         "topicName": { "type": "string" },
         "introduction": { "type": "string" },
@@ -41,7 +54,7 @@
       "properties": {
         "userId": { "type": "string" },
         "userName": { "type": "string" },
-        "text": { "type": "string" },
+        "text": { "type": "string", "maxLength": 500 },
         "likes": { "type": "integer" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
@@ -52,6 +65,10 @@
     "/users/{userId}": {
       "schema": "User",
       "description": "User profile documents"
+    },
+    "/admins/{adminId}": {
+      "schema": "Admin",
+      "description": "Admin whitelist documents"
     },
     "/lessons/{lessonId}": {
       "schema": "Lesson",

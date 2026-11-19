@@ -20,8 +20,8 @@ import { DisciplineSystem } from './components/DisciplineSystem';
 import { ModulePage } from './components/ModulePage';
 import { LEARNING_PATHS, LearningPath } from './data/learningPaths';
 import { Flashcard } from './types';
-import { SimulationGame } from './components/games/SimulationGame';
 import { GameCreator } from './components/GameCreator';
+import { FounderDashboard } from './components/FounderDashboard';
 
 // Global AI Education Ecosystem Modules
 import { MentorMarketplace } from './components/MentorMarketplace';
@@ -61,6 +61,7 @@ import { useLessons } from './hooks/LessonContext';
 export default function App() {
   const { 
     profile, 
+    isAdmin,
     updateProfile, 
     updateProgress, 
     addFlashcards, 
@@ -286,9 +287,8 @@ export default function App() {
   const currentCategory = React.useMemo(() => CATEGORIES.find(c => c.id === selectedCategory), [selectedCategory]);
   const currentSubfield = React.useMemo(() => currentCategory?.subfields?.find(s => s.id === selectedSubfield), [currentCategory, selectedSubfield]);
 
-  const isAdmin = profile?.role === 'admin';
   const isTeacher = profile?.role === 'teacher';
-  const isStudent = profile?.role === 'student';
+  const isStudent = !isAdmin && !isTeacher;
 
   const isStreakAtRisk = React.useMemo(() => {
     if (!profile?.lastStreakUpdate || profile.streak === 0) return false;
@@ -307,7 +307,7 @@ export default function App() {
   if (loading) return null;
 
   if (!profile || !profile.name) {
-    return <Onboarding onComplete={(data) => updateProfile(data)} user={user} onLogout={handleLogout} />;
+    return <Onboarding onComplete={(data) => updateProfile({ ...data, role: 'student' })} user={user} onLogout={handleLogout} />;
   }
 
   return (
@@ -453,7 +453,26 @@ export default function App() {
             label="Command Center"
           />
 
-          {(isAdmin || isTeacher) && (
+          {isAdmin && (
+            <>
+              <div className="px-3 py-1 pt-3 text-[9px] font-black tracking-widest text-slate-400 uppercase">
+                Կառավարում (Founder)
+              </div>
+              <NavItem 
+                active={activeTab === 'school'} 
+                onClick={() => setActiveTab('school')}
+                icon={<Building2 size={16} />}
+                label="Founder Dashboard"
+              />
+              <NavItem 
+                active={activeTab === 'creator'} 
+                onClick={() => setActiveTab('creator')}
+                icon={<Wand2 size={16} />}
+                label="Game Creator"
+              />
+            </>
+          )}
+          {!isAdmin && isTeacher && (
             <>
               <div className="px-3 py-1 pt-3 text-[9px] font-black tracking-widest text-slate-400 uppercase">
                 {t('nav.admin')}
@@ -465,14 +484,6 @@ export default function App() {
                 label={t('nav.schoolManagement')}
               />
             </>
-          )}
-          {isAdmin && (
-            <NavItem 
-              active={activeTab === 'creator'} 
-              onClick={() => setActiveTab('creator')}
-              icon={<Wand2 size={16} />}
-              label="Game Creator"
-            />
           )}
           {user && (
             <button
@@ -667,56 +678,50 @@ export default function App() {
               </motion.div>
             )}
 
-            {activeTab === 'school' && (isAdmin || isTeacher) && (
-              <motion.div
-                key="school"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-              >
-                <div className="bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-xl overflow-hidden">
-                   <div className="mb-10 text-center">
-                      <h2 className="text-4xl font-black text-slate-900 tracking-tight">Դպրոցի Կառավարում</h2>
-                      <p className="text-slate-500 font-medium mt-2">Կառավարեք աշակերտներին և դիտեք առաջընթացը</p>
-                   </div>
-                   
-                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-                      <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                         <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">Աշակերտներ</p>
-                         <p className="text-3xl font-black text-slate-900">248</p>
-                      </div>
-                      <div className="p-6 bg-emerald-50 rounded-3xl border border-emerald-100">
-                         <p className="text-xs font-black uppercase tracking-widest text-emerald-600 mb-1">Ակտիվություն</p>
-                         <p className="text-3xl font-black text-emerald-700">85%</p>
-                      </div>
-                      <div className="p-6 bg-primary/10 rounded-3xl border border-primary/20">
-                         <p className="text-xs font-black uppercase tracking-widest text-primary mb-1">Average XP</p>
-                         <p className="text-3xl font-black text-primary">12.4k</p>
-                      </div>
-                   </div>
-
-                   <div className="space-y-4">
-                      <h3 className="text-xl font-black text-slate-900 px-2">Վերջին ակտիվություն</h3>
-                      {[1,2,3,4,5].map(i => (
-                        <div key={i} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-primary/20 transition-all">
-                           <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center font-bold text-slate-500">
-                                 S{i}
-                              </div>
-                              <div>
-                                 <p className="font-bold text-slate-900">Աշակերտ {i}</p>
-                                 <p className="text-xs text-slate-500">Ավարտել է «Ֆինանսական Գրագիտություն» դասը</p>
-                              </div>
-                           </div>
-                           <div className="text-right">
-                              <p className="text-sm font-black text-emerald-500">+250 XP</p>
-                              <p className="text-[10px] text-slate-400 uppercase font-black">2 րոպե առաջ</p>
-                           </div>
-                        </div>
-                      ))}
-                   </div>
+            {activeTab === 'school' && (
+              !isAdmin && !isTeacher ? (
+                <div className="bg-red-50 p-12 rounded-[3.5rem] border border-red-200 text-center max-w-2xl mx-auto space-y-6 shadow-xl">
+                  <div className="w-16 h-16 bg-red-100 text-red-600 rounded-3xl mx-auto flex items-center justify-center font-black text-2xl">
+                    🛡️
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black text-red-900 tracking-tight">Մուտքն արգելված է (Access Denied)</h3>
+                    <p className="text-red-700 text-sm font-medium mt-2">
+                      Այս բաժինը հասանելի է միայն հաստատված ադմինիստրատորներին և համակարգի հիմնադրին:
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => setActiveTab('dashboard')}
+                    className="px-8 py-4 bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-700 transition-all cursor-pointer shadow-lg shadow-red-200"
+                  >
+                    Վերադառնալ Գլխավոր էջ
+                  </button>
                 </div>
-              </motion.div>
+              ) : isAdmin ? (
+                <motion.div
+                  key="founder-dashboard"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                >
+                  <FounderDashboard currentProfile={profile!} />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="teacher-school"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                >
+                  <div className="bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-xl overflow-hidden">
+                     <div className="mb-10 text-center">
+                        <h2 className="text-4xl font-black text-slate-900 tracking-tight">Ուսուցչի Դասարան</h2>
+                        <p className="text-slate-500 font-medium mt-2">Աշակերտների առաջընթաց և առաջադրանքներ</p>
+                     </div>
+                     <p className="text-center text-slate-400 font-bold">Ուսուցչի մոդուլը ակտիվ է:</p>
+                  </div>
+                </motion.div>
+              )
             )}
 
             {activeTab === 'creator' && isAdmin && (
@@ -1376,10 +1381,9 @@ const MobileNavItem = ({ active, onClick, icon, label }: { active: boolean, onCl
   </button>
 );
 
-const Onboarding = ({ onComplete, user, onLogout }: { onComplete: (data: { name: string, school?: string, role: 'admin' | 'teacher' | 'student' }) => void, user: any, onLogout: () => void }) => {
+const Onboarding = ({ onComplete, user, onLogout }: { onComplete: (data: { name: string, school?: string, role: 'student' }) => void, user: any, onLogout: () => void }) => {
   const [name, setName] = useState('');
   const [school, setSchool] = useState('');
-  const [selectedRole, setSelectedRole] = useState<'admin' | 'teacher' | 'student'>('student');
   const [showEmailLogin, setShowEmailLogin] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -1389,14 +1393,26 @@ const Onboarding = ({ onComplete, user, onLogout }: { onComplete: (data: { name:
     try {
       await signInWithGoogle();
       toast.success("Մուտքը հաջողվեց Google-ի միջոցով:");
-    } catch (e) {
-      toast.error("Google-ով մուտքի սխալ:");
+    } catch (e: any) {
+      if (e.code === 'auth/popup-closed-by-user') {
+        toast.info("Մուտքի պատուհանը փակվեց:");
+      } else {
+        toast.error("Google-ով մուտքի սխալ: " + (e.message || ''));
+      }
     }
   };
 
   const handleEmailAuth = async () => {
     try {
+      if (!email.trim() || !password) {
+        toast.error("Խնդրում ենք լրացնել էլ. փոստը և գաղտնաբառը:");
+        return;
+      }
       if (isRegistering) {
+        if (password.length < 6) {
+          toast.error("Գաղտնաբառը պետք է պարունակի առնվազն 6 նիշ:");
+          return;
+        }
         await registerWithEmail(email, password);
         toast.success("Գրանցումը հաջողվեց:");
       } else {
@@ -1404,7 +1420,15 @@ const Onboarding = ({ onComplete, user, onLogout }: { onComplete: (data: { name:
         toast.success("Մուտքը հաջողվեց:");
       }
     } catch (e: any) {
-      toast.error(e.message || "Մուտքի սխալ:");
+      if (e.code === 'auth/email-already-in-use') {
+        toast.error("Այս էլ. փոստով հաշիվ արդեն գոյություն ունի: Փորձեք մուտք գործել:");
+      } else if (e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found') {
+        toast.error("Սխալ էլ. փոստ կամ գաղտնաբառ:");
+      } else if (e.code === 'auth/weak-password') {
+        toast.error("Գաղտնաբառը չափազանց թույլ է:");
+      } else {
+        toast.error(e.message || "Մուտքի սխալ:");
+      }
     }
   };
 
@@ -1442,29 +1466,9 @@ const Onboarding = ({ onComplete, user, onLogout }: { onComplete: (data: { name:
                 placeholder="Դպրոց / Հաստատություն (ըստ ցանկության)"
                 className="w-full px-8 py-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] focus:border-accent focus:bg-white outline-none transition-all text-xl font-bold shadow-sm focus:shadow-xl focus:shadow-accent/10"
               />
-              
-              <div className="space-y-3">
-                <label className="block text-sm font-black text-slate-700 ml-1 uppercase tracking-widest">Դեր</label>
-                <div className="grid grid-cols-3 gap-3">
-                   {(['student', 'teacher', 'admin'] as const).map(r => (
-                     <button
-                       key={r}
-                       onClick={() => setSelectedRole(r)}
-                       className={cn(
-                         "py-4 rounded-2xl font-black text-xs uppercase tracking-widest border-2 transition-all",
-                         selectedRole === r 
-                           ? "bg-slate-900 border-slate-900 text-white shadow-lg" 
-                           : "bg-white border-slate-100 text-slate-400 hover:border-slate-200"
-                       )}
-                     >
-                       {r === 'admin' ? 'Ադմին' : r === 'teacher' ? 'Ուսուցիչ' : 'Աշակերտ'}
-                     </button>
-                   ))}
-                </div>
-              </div>
 
               <button
-                onClick={() => name.trim() && onComplete({ name, school, role: selectedRole })}
+                onClick={() => name.trim() && onComplete({ name, school, role: 'student' })}
                 disabled={!name.trim()}
                 className="w-full bg-slate-900 text-white py-5 rounded-[1.5rem] font-black text-xl hover:opacity-90 transition-all shadow-xl shadow-slate-200 disabled:opacity-50"
               >
@@ -1543,29 +1547,9 @@ const Onboarding = ({ onComplete, user, onLogout }: { onComplete: (data: { name:
                 placeholder="Դպրոց / Հաստատություն (ըստ ցանկության)"
                 className="w-full px-8 py-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] focus:border-accent focus:bg-white outline-none transition-all text-xl font-bold shadow-sm focus:shadow-xl focus:shadow-accent/10"
               />
-
-              <div className="space-y-3">
-                <label className="block text-sm font-black text-slate-700 ml-1 uppercase tracking-widest">Դեր</label>
-                <div className="grid grid-cols-3 gap-3">
-                   {(['student', 'teacher', 'admin'] as const).map(r => (
-                     <button
-                       key={r}
-                       onClick={() => setSelectedRole(r)}
-                       className={cn(
-                         "py-4 rounded-2xl font-black text-xs uppercase tracking-widest border-2 transition-all",
-                         selectedRole === r 
-                           ? "bg-slate-900 border-slate-900 text-white shadow-lg" 
-                           : "bg-white border-slate-100 text-slate-400 hover:border-slate-200"
-                       )}
-                     >
-                       {r === 'admin' ? 'Ադմին' : r === 'teacher' ? 'Ուսուցիչ' : 'Աշակերտ'}
-                     </button>
-                   ))}
-                </div>
-              </div>
             </div>
             <button
-              onClick={() => name.trim() && onComplete({ name, school, role: selectedRole })}
+              onClick={() => name.trim() && onComplete({ name, school, role: 'student' })}
               disabled={!name.trim()}
               className="w-full bg-gradient-brand text-white py-6 rounded-[1.5rem] font-black text-xl hover:opacity-90 transition-all shadow-xl shadow-primary/20 disabled:opacity-50 glow-cyan-hover"
             >
