@@ -106,7 +106,7 @@ export const GrowthOSHub: React.FC<{ initialTab?: (typeof tabs)[number]["id"] }>
       const next: Roadmap = {
         id: crypto.randomUUID(), goal: goal.trim(), startingLevel: level, targetDate: targetDate || undefined,
         summary: parsed.summary || "Անհատականացված զարգացման ուղի։",
-        milestones: parsed.milestones.map((m, i) => ({ ...m, id: `milestone-${i + 1}`, skills: m.skills || [], tasks: m.tasks || [], resources: m.resources || [], estimatedHours: Number(m.estimatedHours) || 4, completed: false })),
+        milestones: parsed.milestones.map((m, i) => ({ ...m, id: `milestone-${i + 1}`, skills: m.skills || [], tasks: m.tasks || [], resources: (m.resources || []).map(resource => ({ ...resource, url: resource.url?.startsWith("https://") ? resource.url : undefined })), estimatedHours: Number(m.estimatedHours) || 4, completed: false })),
         createdAt: new Date().toISOString(), status: "active",
       };
       await persist(next);
@@ -135,9 +135,9 @@ export const GrowthOSHub: React.FC<{ initialTab?: (typeof tabs)[number]["id"] }>
       const prompt = `Դու KrtLab-ի ուսումնական գնահատողն ես։ Գնահատիր սովորողի ներկայացրած աշխատանքը ըստ չափանիշի։ Փուլ՝ ${m.title}. Չափանիշ՝ ${m.assessment}. Ապացույց՝ ${evidence}. Վերադարձիր միայն JSON՝ {"score":0-100,"feedback":"կոնկրետ հայերեն հետադարձ կապ","passed":true|false}. passed=true միայն եթե ապացույցը բավարարում է չափանիշների մեծ մասին, score >= 75։ Մի պնդիր, որ ստուգել ես չտրամադրված ֆայլեր կամ արտաքին հղումներ։`;
       const raw = await chatWithMentor([{ role: "user", text: prompt }], userName);
       const result = extractJson<{ score: number; feedback: string; passed: boolean }>(raw);
-      const normalized = { score: Math.max(0, Math.min(100, Number(result.score) || 0)), feedback: String(result.feedback || ""), passed: Boolean(result.passed) };
+      const score = Math.max(0, Math.min(100, Number(result.score) || 0));\n      const normalized = { score, feedback: String(result.feedback || ""), passed: Boolean(result.passed) && score >= 75 };
       const nextResults = { ...assessmentResults, [m.id]: normalized };
-      const nextRoadmap = { ...roadmap, milestones: roadmap.milestones.map(item => item.id === m.id ? { ...item, evidence } : item) };
+      const nextRoadmap = { ...roadmap, milestones: roadmap.milestones.map(item => item.id === m.id ? { ...item, evidence, completed: normalized.passed ? item.completed : false } : item) };
       setAssessmentResults(nextResults);
       await setDoc(doc(db, "users", uid!, "growthOS", "main"), { roadmap: nextRoadmap, assessmentResults: nextResults, updatedAt: serverTimestamp() }, { merge: true });
       setRoadmap(nextRoadmap);
