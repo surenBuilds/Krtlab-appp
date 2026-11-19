@@ -1300,6 +1300,12 @@ export default function App() {
                   icon={<LayoutDashboard />}
                   label="Գլխավոր"
                 />
+                <MobileNavItem
+                  active={activeTab === 'growth-os'}
+                  onClick={() => { setActiveTab('growth-os'); setIsMobileMenuOpen(false); }}
+                  icon={<Target />}
+                  label="KrtLab Growth OS"
+                />
                 <MobileNavItem 
                   active={activeTab === 'learn'} 
                   onClick={() => { setActiveTab('learn'); setIsMobileMenuOpen(false); }}
