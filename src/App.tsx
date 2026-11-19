@@ -1128,7 +1128,7 @@ export default function App() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
               >
-                <CourseMarketplace />
+                <GrowthOSHub initialTab="courses" />
               </motion.div>
             )}
 
@@ -1161,7 +1161,7 @@ export default function App() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
               >
-                <CareerCenter />
+                <GrowthOSHub initialTab="opportunities" />
               </motion.div>
             )}
 
